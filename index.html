@@ -77,6 +77,8 @@
   /* theme switcher control */
   .theme-select{font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);background-color:#fff;border:1px solid var(--line-strong);border-radius:9px;padding:7px 26px 7px 12px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath fill='%235f6e70' d='M0 0h10L5 6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;background-size:9px 6px;cursor:pointer}
   .theme-select:hover{border-color:var(--teal);color:var(--teal-ink)}
+  .theme-foot{display:flex;justify-content:flex-end;align-items:center;gap:8px;max-width:1320px;margin:0 auto;padding:10px 18px 30px}
+  .theme-foot .theme-foot-label{font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
   *{box-sizing:border-box} html,body{margin:0;padding:0}
   body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
   button{font-family:inherit;cursor:pointer} .mono{font-family:var(--mono)}
@@ -262,6 +264,7 @@
     #browseCol[data-hidden="true"],#dayCol[data-hidden="true"]{display:none}
     .catalog{max-height:none}
     .head-inner{padding:10px 14px} .brand h1{font-size:17px} .wrap{padding:14px}
+    .theme-foot{padding:6px 14px 26px}
   }
 </style>
 </head>
@@ -274,11 +277,6 @@
       <span class="dates mono">19–23 July 2026 · times in PDT</span>
     </div>
     <div class="head-tools">
-      <select class="theme-select" id="themeSelect" aria-label="Color theme" title="Switch color theme">
-        <option value="siggraph">SIGGRAPH theme</option>
-        <option value="light">Light theme</option>
-        <option value="dark">Dark theme</option>
-      </select>
       <span class="save-note" id="saveNote">Saved locally</span>
       <button class="tbtn" id="btnFloorPlan" title="Browse the LA Convention Center floor plan">🗺 Floor plan</button>
       <button class="tbtn" id="btnLoadFile" title="Load a saved picks/catalog file">Load</button>
@@ -342,6 +340,15 @@
     </div>
   </section>
 </div>
+
+<footer class="theme-foot" id="themeFoot">
+  <span class="theme-foot-label">Color theme</span>
+  <select class="theme-select" id="themeSelect" aria-label="Color theme" title="Switch color theme">
+    <option value="siggraph">SIGGRAPH theme</option>
+    <option value="light">Light theme</option>
+    <option value="dark">Dark theme</option>
+  </select>
+</footer>
 
 <div class="pop" id="pop"></div>
 <div class="pop map-pop" id="mapPop"></div>
