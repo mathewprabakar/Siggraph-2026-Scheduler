@@ -77,6 +77,9 @@
   .swatch{width:4px;border-radius:3px;flex:0 0 4px;align-self:stretch;background:var(--indigo)}
   .cat-body{flex:1;min-width:0}
   .cat-title{font-weight:600;font-size:14px;letter-spacing:-.005em;margin:0 0 3px}
+  .cat-title a{color:inherit;text-decoration:none}
+  .cat-title a:hover{color:var(--indigo-ink);text-decoration:underline}
+  .cat-title .ext-arrow{font-size:12px;color:var(--indigo-ink);text-decoration:none;margin-left:1px}
   .cat-meta{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);display:flex;gap:8px;flex-wrap:wrap}
   .cat-meta .tag{color:var(--indigo-ink)}
   .add-btn{flex:0 0 auto;align-self:center;border:1px solid var(--line-strong);background:#fff;width:30px;height:30px;border-radius:8px;font-size:17px;line-height:1;color:var(--indigo);font-weight:700}
@@ -149,8 +152,6 @@
   .pop-link{display:inline-flex;align-items:center;gap:5px;border:none;background:none;padding:0;font-size:11.5px;font-weight:600;color:var(--indigo-ink);text-decoration:none;cursor:pointer;font-family:inherit}
   .pop-link:hover{text-decoration:underline}
 
-  .ext-link{color:var(--indigo-ink);text-decoration:none;font-size:12px;font-weight:700;margin-left:2px}
-  .ext-link:hover{text-decoration:underline}
   .room-link{cursor:pointer;border-radius:5px;padding:1px 4px;margin:-1px -4px}
   .room-link:hover{background:var(--coral-bg);color:var(--coral)}
 
@@ -3819,7 +3820,7 @@ function renderCatalog(){
     const el=document.createElement('div');
     el.className='cat-item'+(picked.has(c.id)?' picked':'');
     el.innerHTML=`<span class="swatch" style="background:${colorFor(c.program)}"></span>
-      <div class="cat-body"><p class="cat-title">${esc(c.t)}${c.url?` <a class="ext-link" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" title="View on the SIGGRAPH schedule site" onclick="event.stopPropagation()">↗</a>`:''}</p>
+      <div class="cat-body"><p class="cat-title">${c.url?`<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" title="View on the SIGGRAPH schedule site" onclick="event.stopPropagation()">${esc(c.t)} <span class="ext-arrow">↗</span></a>`:esc(c.t)}</p>
       <div class="cat-meta"><span class="tag">${esc(c.program)}</span><span>${wd} · ${c.s0!=null?fmtTime(c.s0):'—'}–${c.e0!=null?fmtTime(c.e0):''}</span>${c.room?`<span class="room-link" title="Show on floor plan">📍 ${esc(c.room)}</span>`:''}</div></div>
       <button class="add-btn" title="${picked.has(c.id)?'Remove':'Add to my day'}">${picked.has(c.id)?'✓':'+'}</button>`;
     el.querySelector('.add-btn').onclick=()=>togglePick(c);
