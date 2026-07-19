@@ -19,6 +19,61 @@
     --sans: "Luxe Uno","Avenir Next","Century Gothic",Futura,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --shadow: 0 1px 2px rgba(42,66,73,.06), 0 6px 18px rgba(42,66,73,.08);
   }
+  /* ---- Light theme: the app's original pre-SIGGRAPH palette ---- */
+  :root[data-theme="light"]{
+    --bg:#f4f5f7; --panel:#fff; --cream:#fff; --ink:#111317; --ink-soft:#575d6b;
+    --line:#e6e7ec; --line-strong:#cccfd8;
+    --teal:#0000cc; --teal-ink:#000099; --teal-bg:#eef0ff;
+    --wine:#cc0000; --wine-bg:#fdecec; --amber:#b45f00;
+    --hover:#fafbff;
+    --sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --shadow: 0 1px 2px rgba(20,22,32,.05), 0 6px 18px rgba(20,22,32,.06);
+  }
+  :root[data-theme="light"] header::before{background:linear-gradient(90deg,var(--wine) 0 50%,var(--teal) 50% 100%)}
+  :root[data-theme="light"] .lane .halfline{border-color:#eef0f6}
+  :root[data-theme="light"] .conflict-strip{border-color:#f6c9d1;color:#a11b34}
+  :root[data-theme="light"] .cat-item.picked .add-btn{border-color:#c9ccff}
+  :root[data-theme="light"] .fp-overlay{background:rgba(15,17,24,.55)}
+  :root[data-theme="light"] .fp-zone-outline{fill:rgba(0,0,204,.05)}
+  :root[data-theme="light"] .fp-zone-outline.hl{fill:rgba(204,0,0,.4);stroke:#8a0000}
+  /* ---- Dark theme ---- */
+  :root[data-theme="dark"]{
+    --bg:#12171a; --panel:#1c2327; --cream:#161c1f; --ink:#e7eef0; --ink-soft:#9db0b5;
+    --line:#2b343a; --line-strong:#3d4a51;
+    --teal:#37b3c6; --teal-ink:#8ad9e6; --teal-bg:#173037;
+    --wine:#e8859a; --wine-bg:#37222a; --amber:#e0a94a;
+    --hover:#242d33;
+    --sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 22px rgba(0,0,0,.55);
+  }
+  :root[data-theme="dark"] .tbtn,
+  :root[data-theme="dark"] .chip,
+  :root[data-theme="dark"] .filterbar .ftoggle,
+  :root[data-theme="dark"] .day-tab,
+  :root[data-theme="dark"] .pri-btns button,
+  :root[data-theme="dark"] .pop,
+  :root[data-theme="dark"] .pop .remove,
+  :root[data-theme="dark"] .add-btn,
+  :root[data-theme="dark"] .switch button,
+  :root[data-theme="dark"] .search,
+  :root[data-theme="dark"] .form-grid input,
+  :root[data-theme="dark"] .form-grid select,
+  :root[data-theme="dark"] .form-grid textarea,
+  :root[data-theme="dark"] .theme-select{background-color:#232c31}
+  :root[data-theme="dark"] .chip[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:#07171b}
+  :root[data-theme="dark"] .cat-item.picked .add-btn{border-color:var(--teal)}
+  :root[data-theme="dark"] .lane .halfline{border-color:#283238}
+  :root[data-theme="dark"] .conflict-strip{border-color:#5a3a42}
+  :root[data-theme="dark"] .toast{background:#0a1114;color:#e7eef0}
+  /* the floor-plan map art is drawn for a light backdrop, so keep the modal light in every theme */
+  :root[data-theme="dark"] .fp-modal,
+  :root[data-theme="dark"] .fp-body{background:#fff}
+  :root[data-theme="dark"] .fp-head{border-bottom-color:#e6e7ec}
+  :root[data-theme="dark"] .fp-head h3{color:#1b2327}
+  :root[data-theme="dark"] .fp-close,
+  :root[data-theme="dark"] .fp-note,
+  :root[data-theme="dark"] .fp-legend{color:#575d6b}
+  :root[data-theme="dark"] .fp-lvbtn{background-color:#fff;color:#222;border-color:#cccfd8}
   /* theme switcher control */
   .theme-select{font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);background-color:#fff;border:1px solid var(--line-strong);border-radius:9px;padding:7px 26px 7px 12px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath fill='%235f6e70' d='M0 0h10L5 6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;background-size:9px 6px;cursor:pointer}
   .theme-select:hover{border-color:var(--teal);color:var(--teal-ink)}
@@ -210,6 +265,8 @@
     <div class="head-tools">
       <select class="theme-select" id="themeSelect" aria-label="Color theme" title="Switch color theme">
         <option value="siggraph">SIGGRAPH theme</option>
+        <option value="light">Light theme</option>
+        <option value="dark">Dark theme</option>
       </select>
       <span class="save-note" id="saveNote">Saved locally</span>
       <button class="tbtn" id="btnFloorPlan" title="Browse the LA Convention Center floor plan">🗺 Floor plan</button>
@@ -17715,10 +17772,20 @@ const PALETTES={
     "Emerging Technologies":"#23867c","Immersive Pavilion":"#7a4a9e","Industry Sessions":"#4a5f7a","Posters":"#7d8578",
     "Technical Workshops":"#33708c","Appy Hour":"#ab5232","Stage Sessions":"#5e6b3a","Pathfinders":"#7a5a2b",
     "ACM SIGGRAPH 365":"#55616a","ACM SIGGRAPH Award Talks":"#3a4a52","Exhibition":"#55616a"
+  },
+  light:{
+    "Technical Papers":"#0000cc","Courses":"#0aa3bf","Games Summit":"#e0672a","Birds of a Feather":"#2f9e57",
+    "Production Sessions":"#c0407e","Talks":"#7b52d6","Keynote Speakers":"#111827","Real-Time Live!":"#cc0000",
+    "Art Gallery":"#b8862b","Art Papers":"#b8862b","Computer Animation Festival":"#8a5a2b","Educator's Forum":"#3f7a8c",
+    "Educator's Day Sessions":"#3f7a8c","Spatial Storytelling":"#6a4ac0","Panels":"#417a3f","Frontiers":"#9a3b6c",
+    "Emerging Technologies":"#0e8f8f","Immersive Pavilion":"#7a3fb0","Industry Sessions":"#4a5a7a","Posters":"#8a8f9e",
+    "Technical Workshops":"#2f6f8f","Appy Hour":"#b3552f","Stage Sessions":"#5a6a3f","Pathfinders":"#7a5a2b",
+    "ACM SIGGRAPH 365":"#556","ACM SIGGRAPH Award Talks":"#3a3f52","Exhibition":"#556"
   }
 };
-const PALETTE_FALLBACK={siggraph:"#5f6e70"};
-const THEME_KEY='s2026-theme', THEMES=['siggraph'];
+PALETTES.dark=PALETTES.siggraph;
+const PALETTE_FALLBACK={siggraph:"#5f6e70",dark:"#5f6e70",light:"#5b6070"};
+const THEME_KEY='s2026-theme', THEMES=['siggraph','light','dark'];
 function curTheme(){return document.documentElement.dataset.theme||'siggraph';}
 let PROGRAM_COLORS=PALETTES[curTheme()]||PALETTES.siggraph;
 function colorFor(p){return PROGRAM_COLORS[p]||PALETTE_FALLBACK[curTheme()]||"#5f6e70";}
