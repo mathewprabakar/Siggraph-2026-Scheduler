@@ -192,8 +192,10 @@
   .nowline .nowdot{position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:#e03131}
   .nowline .nowlbl{position:absolute;right:2px;top:-17px;font-size:9.5px;font-weight:700;color:#e03131;background:rgba(251,248,238,.9);padding:0 4px;border-radius:4px}
   .ev{position:absolute;border-radius:9px;padding:6px 8px;overflow:hidden;color:#fff;box-shadow:0 1px 3px rgba(42,66,73,.22);cursor:pointer;border:1px solid rgba(255,255,255,.25);display:flex;flex-direction:column;gap:2px;min-height:24px}
-  .ev .et{font-size:12px;font-weight:700;line-height:1.15;letter-spacing:-.01em;overflow:hidden}
-  .ev .em{font-family:var(--mono);font-size:10px;opacity:.92;line-height:1.2;overflow:hidden}
+  .ev .et{font-size:12px;font-weight:700;line-height:1.15;letter-spacing:-.01em;overflow:hidden;flex-shrink:0}
+  .ev .em{font-family:var(--mono);font-size:10px;opacity:.92;line-height:1.2;overflow:hidden;flex-shrink:0}
+  .ev.compact{padding:4px 8px}
+  .ev.compact .et{white-space:nowrap;text-overflow:ellipsis}
   .ev.conflict{outline:2px solid var(--wine);outline-offset:-2px}
   .ev .x{position:absolute;top:3px;right:4px;width:16px;height:16px;border-radius:5px;background:rgba(0,0,0,.22);color:#fff;font-size:12px;line-height:16px;text-align:center;font-weight:700;display:none}
   .ev:hover .x{display:block}
@@ -18056,12 +18058,12 @@ function renderTimetable(){
         const top=Math.max(0,(e.s0-GRID_START))*PXPERMIN;
         const h=Math.max(22,(e.e0-e.s0)*PXPERMIN-2);
         const el=document.createElement('div');
-        el.className='ev'+(conf.has(e.id)?' conflict':'')+(e.pr===1?' p-high':'')+(e.pr===3?' p-low':'');
+        const short=h<40;
+        el.className='ev'+(conf.has(e.id)?' conflict':'')+(e.pr===1?' p-high':'')+(e.pr===3?' p-low':'')+(short?' compact':'');
         el.style.top=top+'px';el.style.height=h+'px';
         el.style.left=`calc(${col*wPct}% + ${col?gutter/2:0}px)`;
         el.style.width=`calc(${wPct}% - ${gutter}px)`;
         el.style.background=colorFor(e.program);
-        const short=h<40;
         el.innerHTML=`<span class="x" title="Remove">×</span>
           <span class="et">${esc(e.t)}</span>
           ${short?'':`<span class="em">${esc(e.room||'')}</span>`}
