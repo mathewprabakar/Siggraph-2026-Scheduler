@@ -424,13 +424,23 @@ function renderPriorityPop(e,anchor){
   pop.classList.add('show');
   positionPop(anchor);
 }
-function positionPop(anchor){
+/* Position a popover next to an anchor: prefer below, flip above if it would overflow
+   the bottom. align 'left' lines the popover's left edge to the anchor (clamped to the
+   right edge); align 'right' lines its right edge to the anchor. Shared by all three
+   popovers (priority / map / share). */
+function positionPopover(el,anchor,width,fallbackHeight,align){
   const r=anchor.getBoundingClientRect();
-  const pw=250, ph=pop.offsetHeight||210;
-  let left=window.scrollX+r.left; if(left+pw>window.scrollX+window.innerWidth-10)left=window.scrollX+window.innerWidth-pw-10;
+  const pw=width, ph=el.offsetHeight||fallbackHeight;
+  let left;
+  if(align==='right'){
+    left=window.scrollX+r.right-pw; if(left<10)left=window.scrollX+10;
+  }else{
+    left=window.scrollX+r.left; if(left+pw>window.scrollX+window.innerWidth-10)left=window.scrollX+window.innerWidth-pw-10;
+  }
   let top=window.scrollY+r.bottom+6; if(top+ph>window.scrollY+window.innerHeight-10)top=window.scrollY+r.top-ph-6;
-  pop.style.left=Math.max(10,left)+'px';pop.style.top=Math.max(10,top)+'px';
+  el.style.left=Math.max(10,left)+'px';el.style.top=Math.max(10,top)+'px';
 }
+function positionPop(anchor){positionPopover(pop,anchor,250,210,'left');}
 function removeWithUndo(e){
   picked.delete(e.id);saveState();renderCatalog();renderTimetable();syncDayTabs();
   closePop();
@@ -468,11 +478,7 @@ function openMapPop(venue,anchor){
     <iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=${q}&output=embed"></iframe>
     <a class="pop-link" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener noreferrer">↗ Open in Google Maps</a>`;
   mapPop.classList.add('show');
-  const r=anchor.getBoundingClientRect();
-  const pw=280,ph=mapPop.offsetHeight||280;
-  let left=window.scrollX+r.left; if(left+pw>window.scrollX+window.innerWidth-10)left=window.scrollX+window.innerWidth-pw-10;
-  let top=window.scrollY+r.bottom+6; if(top+ph>window.scrollY+window.innerHeight-10)top=window.scrollY+r.top-ph-6;
-  mapPop.style.left=Math.max(10,left)+'px';mapPop.style.top=Math.max(10,top)+'px';
+  positionPopover(mapPop,anchor,280,280,'left');
 }
 function closeMapPop(){mapPop.classList.remove('show');}
 document.addEventListener('click',e=>{if(!mapPop.contains(e.target))closeMapPop();});
@@ -672,11 +678,7 @@ function openSharePop(anchor){
   const nsBtn=document.getElementById('btnNativeShare');
   if(nsBtn)nsBtn.onclick=()=>{navigator.share({title:document.title,url}).catch(()=>{});};
   sharePop.classList.add('show');
-  const r=anchor.getBoundingClientRect();
-  const pw=236,ph=sharePop.offsetHeight||300;
-  let left=window.scrollX+r.right-pw; if(left<10)left=window.scrollX+10;
-  let top=window.scrollY+r.bottom+6; if(top+ph>window.scrollY+window.innerHeight-10)top=window.scrollY+r.top-ph-6;
-  sharePop.style.left=Math.max(10,left)+'px';sharePop.style.top=Math.max(10,top)+'px';
+  positionPopover(sharePop,anchor,236,300,'right');
 }
 function closeSharePop(){sharePop.classList.remove('show');}
 document.addEventListener('click',e=>{if(!sharePop.contains(e.target)&&e.target.id!=='btnShare')closeSharePop();});
