@@ -9,14 +9,13 @@ and a headless browser runs the page's JS, so both walls disappear here.
 
 Two ways to use it
 ------------------
-1) From a saved page (no browser dependency, 100% reliable):
+1) Fully automated (default; renders the live page for you):
+     python tools/refresh_siggraph.py
+
+2) From a saved page (no browser dependency, 100% reliable):
      - Open https://s2026.conference-schedule.org/  in your browser
      - Save Page As -> "Webpage, HTML Only"
      - python tools/refresh_siggraph.py "Full Schedule - SIGGRAPH 2026 ....htm"
-
-2) Fully automated (renders the live page for you):
-     pip install playwright && playwright install chromium
-     python tools/refresh_siggraph.py --render
 
 Either way it writes  assets/data/siggraph2026-catalog.json , which the app fetches at startup
 (it's the single source of truth for the catalog). Commit the regenerated JSON and
@@ -25,8 +24,11 @@ Requires:  pip install beautifulsoup4
 """
 import sys, json, argparse, re
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 PDT = timezone(timedelta(hours=-7))  # SIGGRAPH week is July -> PDT is a fixed UTC-7
+DEFAULT_URL = 'https://s2026.conference-schedule.org/'
+DEFAULT_OUTPUT = Path('assets/data/siggraph2026-catalog.json')
 
 # Map the per-item type labels to the site's Program-filter names (plural forms)
 PLURAL = {
@@ -135,30 +137,36 @@ def render_live(url):
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page()
-        page.goto(url, wait_until='networkidle', timeout=90000)
-        page.wait_for_selector('.agenda-item', timeout=90000)
-        html = page.content()
-        browser.close()
-    return html
+        try:
+            page = browser.new_page()
+            page.goto(url, wait_until='networkidle', timeout=90000)
+            page.wait_for_selector('.agenda-item', timeout=90000)
+            return page.content()
+        finally:
+            browser.close()
 
 
 def main():
     ap = argparse.ArgumentParser(description="Build siggraph2026-catalog.json for the timetable app.")
     ap.add_argument('input', nargs='?', help="a saved schedule .htm/.html file")
     ap.add_argument('--render', metavar='URL', nargs='?',
-                    const='https://s2026.conference-schedule.org/',
-                    help="fetch & render the live page via Playwright (default: main schedule)")
-    ap.add_argument('-o', '--output', default='assets/data/siggraph2026-catalog.json')
+                    const=DEFAULT_URL,
+                    help="fetch & render a live schedule page via Playwright")
+    ap.add_argument('-o', '--output', default=str(DEFAULT_OUTPUT))
     args = ap.parse_args()
 
-    if args.render:
-        print(f"Rendering {args.render} in a headless browser ...", file=sys.stderr)
-        html = render_live(args.render)
-    elif args.input:
-        html = open(args.input, encoding='utf-8', errors='replace').read()
+    if args.input and args.render:
+        ap.error("choose either a saved HTML input or --render, not both")
+
+    if args.input:
+        input_path = Path(args.input)
+        if not input_path.exists():
+            ap.error(f"saved HTML file not found: {input_path}")
+        html = input_path.read_text(encoding='utf-8', errors='replace')
     else:
-        ap.error("give a saved .htm file, or use --render for the live page")
+        url = args.render or DEFAULT_URL
+        print(f"Rendering {url} in a headless browser ...", file=sys.stderr)
+        html = render_live(url)
 
     catalog = parse_html(html)
     if len(catalog) < 50:
@@ -167,13 +175,15 @@ def main():
 
     out = {"v": 2, "source": "SIGGRAPH 2026", "count": len(catalog),
            "generated": datetime.now(timezone.utc).isoformat(), "catalog": catalog}
-    with open(args.output, 'w', encoding='utf-8') as f:
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open('w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
 
     by_day = {}
     for c in catalog:
         by_day[c['day']] = by_day.get(c['day'], 0) + 1
-    print(f"Wrote {len(catalog)} sessions to {args.output}")
+    print(f"Wrote {len(catalog)} sessions to {output}")
     print("By day:", {k: by_day[k] for k in sorted(by_day)})
     print("Commit the updated JSON; the app fetches it automatically on next load.")
 
