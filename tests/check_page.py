@@ -190,13 +190,115 @@ def check_shared_schedule_link(engine: str, browser, index_url: str) -> None:
     shared_page.goto(shared["url"])
     shared_page.wait_for_function("window.App && App.picked.size === 2", timeout=10000)
     restored = shared_page.evaluate("""
-        () => [...App.picked.values()].map(e => e.t).sort()
+        () => ({
+          titles: [...App.picked.values()].map(e => e.t).sort(),
+          url: location.href,
+        })
     """)
-    record(restored == sorted(shared["titles"]), "shared link restores the selected sessions",
-           f"restored={restored}")
+    record(restored["titles"] == sorted(shared["titles"]), "shared link restores the selected sessions",
+           f"restored={restored['titles']}")
+    record(restored["url"] == shared["appUrl"], "shared link is removed from the address bar after loading",
+           f"url={restored['url']}")
     record(len(errors) == 0, "no console/page errors while creating share link", "; ".join(errors))
     record(len(shared_errors) == 0, "no console/page errors while opening share link", "; ".join(shared_errors))
     shared_context.close()
+    context.close()
+
+
+def check_large_share_qr(engine: str, browser, index_url: str) -> None:
+    print(f"\n== {engine}: large share QR sizing ==")
+    context = browser.new_context(viewport={"width": 390, "height": 844})
+    page, errors = fresh_page(context, index_url)
+
+    qr = page.evaluate("""
+        () => {
+          App.catalog.filter(c => c.day && c.s0 != null && c.e0 != null).slice(0, 120)
+            .forEach(c => App.togglePick(c));
+          document.getElementById('btnShare').click();
+          document.getElementById('shareIncludeSchedule').click();
+          const canvas = document.getElementById('qrCanvas');
+          const rect = canvas.getBoundingClientRect();
+          return {
+            label: document.querySelector('#sharePop .share-url').textContent,
+            width: rect.width,
+            height: rect.height,
+            backingWidth: canvas.width,
+            urlLength: App.shareUrl(true).length,
+          };
+        }
+    """)
+    record(qr["label"].startswith("Schedule link"), "large share UI summarizes the schedule link")
+    record(qr["width"] <= 216 and qr["height"] <= 216, "large schedule QR keeps a stable display size",
+           f"{qr['width']}x{qr['height']}")
+    record(qr["backingWidth"] >= qr["width"], "large schedule QR keeps enough backing pixels",
+           f"backing={qr['backingWidth']} display={qr['width']}")
+    record(len(errors) == 0, "no console/page errors while rendering large share QR", "; ".join(errors))
+    context.close()
+
+
+def check_filter_chips(engine: str, browser, index_url: str) -> None:
+    print(f"\n== {engine}: active filter chips ==")
+    context = browser.new_context(viewport={"width": 1280, "height": 800})
+    page, errors = fresh_page(context, index_url)
+
+    chip_state = page.evaluate("""
+        () => {
+          const dayChip = [...document.querySelectorAll('#dayChips .chip')]
+            .find(chip => chip.dataset.val && chip.textContent.includes('Thu 23'));
+          dayChip.click();
+          const chip = document.querySelector('#activeFilters .filter-chip');
+          const shown = chip && chip.textContent.includes('Thu 23');
+          chip.querySelector('button').click();
+          return {
+            shown,
+            cleared: !document.querySelector('#activeFilters .filter-chip') &&
+              dayChip.getAttribute('aria-pressed') === 'false',
+          };
+        }
+    """)
+    record(chip_state["shown"], "day filter creates a removable active chip")
+    record(chip_state["cleared"], "active filter chip clears the day filter")
+    record(len(errors) == 0, "no console/page errors during filter chip use", "; ".join(errors))
+    context.close()
+
+
+def check_clear_confirmation(engine: str, browser, index_url: str) -> None:
+    print(f"\n== {engine}: clear confirmation dialog ==")
+    context = browser.new_context(viewport={"width": 390, "height": 844}, has_touch=True)
+    page, errors = fresh_page(context, index_url)
+
+    flow = page.evaluate("""
+        () => {
+          const timed = App.catalog.filter(c => c.day && c.s0 != null && c.e0 != null);
+          let pair = timed.slice(0, 2);
+          for (let i = 0; i < timed.length; i++) {
+            const match = timed.find((c, j) => j > i && c.day === timed[i].day && timed[i].s0 < c.e0 && c.s0 < timed[i].e0);
+            if (match) { pair = [timed[i], match]; break; }
+          }
+          pair.forEach(c => App.togglePick(c));
+          document.getElementById('swDay').click();
+          const conflictShown = document.getElementById('conflictStrip').classList.contains('show');
+          document.getElementById('btnClear').click();
+          const opened = document.getElementById('confirmOverlay').classList.contains('show');
+          document.getElementById('btnCancelClear').click();
+          const cancelled = App.picked.size === 2 && !document.getElementById('confirmOverlay').classList.contains('show');
+          document.getElementById('btnClear').click();
+          document.getElementById('btnConfirmClear').click();
+          return {
+            conflictShown,
+            opened,
+            cancelled,
+            cleared: App.picked.size === 0 && !document.getElementById('confirmOverlay').classList.contains('show'),
+            conflictCleared: !document.getElementById('conflictStrip').classList.contains('show'),
+          };
+        }
+    """)
+    record(flow["conflictShown"], "test schedule shows a conflict before clearing")
+    record(flow["opened"], "Clear opens the app confirmation dialog")
+    record(flow["cancelled"], "Cancel keeps selected sessions")
+    record(flow["cleared"], "Confirm clears selected sessions")
+    record(flow["conflictCleared"], "Confirm clear hides the conflict banner")
+    record(len(errors) == 0, "no console/page errors during clear confirmation", "; ".join(errors))
     context.close()
 
 

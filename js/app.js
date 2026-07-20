@@ -157,7 +157,9 @@ function saveState(){
 }
 function updateSaveNote(){
   const n=document.getElementById('saveNote');
-  n.textContent=storageOK?(picked.size?('Saved · '+picked.size+' picked · '+catalog.length+' in catalog'):('Saved · '+catalog.length+' in catalog')):'Storage off — use Export picks';
+  n.textContent=storageOK
+    ?(catalog.length+' sessions loaded')
+    :'Storage off - export your picks';
   n.style.color=storageOK?'':'var(--amber)';
 }
 
@@ -181,7 +183,7 @@ function buildFilterGroups(){
       const cnt=countForOption(g,val);
       const row=document.createElement('label');row.className='checkitem';
       row.innerHTML=`<input type="checkbox" value="${esc(val)}"><span>${esc(val)}</span><span class="cnt">${cnt}</span>`
-        +(g==='room'?`<button type="button" class="room-pin" title="Show ${esc(val)} on the map">📍</button>`:'');
+        +(g==='room'?`<button type="button" class="room-pin" title="Show ${esc(val)} on the map"><svg class="ico"><use href="#i-pin"></use></svg></button>`:'');
       const cb=row.querySelector('input');
       cb.checked=F[g].has(val);
       cb.onchange=()=>{cb.checked?F[g].add(val):F[g].delete(val);renderCatalog();syncFilterCounts();};
@@ -211,6 +213,31 @@ function syncFilterCounts(){
     badge.textContent=n;badge.classList.toggle('show',n>0);
   });
   document.getElementById('fcount').textContent=total;
+  renderActiveFilters();
+}
+function labelForDay(val){
+  if(val==='live')return 'Live';
+  const d=DAYS.find(x=>x.iso===val);
+  return d?(d.wd+' '+d.d):val;
+}
+function renderActiveFilters(){
+  const box=document.getElementById('activeFilters');
+  if(!box)return;
+  box.innerHTML='';
+  const chips=[];
+  if(filterDay)chips.push({label:labelForDay(filterDay),clear:()=>{filterDay='';syncDayChips();renderCatalog();}});
+  Object.entries(F).forEach(([group,set])=>{
+    [...set].forEach(val=>chips.push({label:val,clear:()=>{set.delete(val);const cb=document.querySelector(`.fgroup[data-group="${group}"] input[value="${CSS.escape(val)}"]`);if(cb)cb.checked=false;renderCatalog();syncFilterCounts();}}));
+  });
+  chips.forEach(chip=>{
+    const el=document.createElement('span');el.className='filter-chip';
+    const txt=document.createElement('span');txt.textContent=chip.label;
+    const btn=document.createElement('button');btn.type='button';btn.title='Remove filter';btn.innerHTML='<svg class="ico"><use href="#i-x"></use></svg>';
+    btn.onclick=chip.clear;
+    el.append(txt,btn);
+    box.appendChild(el);
+  });
+  box.classList.toggle('show',chips.length>0);
 }
 
 /* ---- day controls ---- */
@@ -234,7 +261,7 @@ function buildDayControls(){
   const tabs=document.getElementById('dayTabs');
   DAYS.forEach(d=>{
     const b=document.createElement('button');b.className='day-tab';b.dataset.iso=d.iso;
-    b.innerHTML=`<span class="wd">${d.wd}</span><span class="dm">${d.d}</span><span class="badge">0</span><span class="dot">!</span>`;
+    b.innerHTML=`<span class="day-label">${d.wd} ${d.d}</span><span class="badge">0</span><span class="dot"></span>`;
     b.onclick=()=>{activeDay=d.iso;renderTimetable();syncDayTabs();};
     tabs.appendChild(b);
   });
@@ -257,8 +284,8 @@ function renderSessionCard(c){
   const el=document.createElement('div');
   el.className='cat-item'+(picked.has(c.id)?' picked':'');
   el.innerHTML=`<span class="swatch" style="background:${colorFor(c.program)}"></span>
-    <div class="cat-body"><p class="cat-title">${c.url?`<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" title="View on the SIGGRAPH schedule site" onclick="event.stopPropagation()">${esc(c.t)} <span class="ext-arrow">↗</span></a>`:esc(c.t)}</p>
-    <div class="cat-meta"><span class="tag">${esc(c.program)}</span><span>${wd} · ${c.s0!=null?fmtTime(c.s0):'—'}–${c.e0!=null?fmtTime(c.e0):''}</span>${c.room?`<span class="room-link" title="Show on floor plan">📍 ${esc(c.room)}</span>`:''}</div></div>
+    <div class="cat-body"><p class="cat-title">${c.url?`<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" title="View on the SIGGRAPH schedule site" onclick="event.stopPropagation()">${esc(c.t)} <svg class="ico ext-arrow"><use href="#i-external"></use></svg></a>`:esc(c.t)}</p>
+    <div class="cat-meta"><span class="tag">${esc(c.program)}</span><span>${wd} · ${c.s0!=null?fmtTime(c.s0):'—'}–${c.e0!=null?fmtTime(c.e0):''}</span>${c.room?`<span class="room-link" title="Show on floor plan"><svg class="ico"><use href="#i-pin"></use></svg>${esc(c.room)}</span>`:''}</div></div>
     <button class="add-btn" title="${picked.has(c.id)?'Remove':'Add to my day'}">${picked.has(c.id)?'✓':'+'}</button>`;
   el.querySelector('.add-btn').onclick=()=>togglePick(c);
   const roomLink=el.querySelector('.room-link');
@@ -314,6 +341,7 @@ const PR_LABEL={1:'High',2:'Med',3:'Low'};
 function renderTimetable(){
   const grid=document.getElementById('grid');
   const evs=eventsForDay(activeDay);
+  const strip=document.getElementById('conflictStrip');
   document.getElementById('dayCount').textContent=evs.length?(evs.length+' session'+(evs.length>1?'s':'')):'';
   let html='<div class="hours">';
   for(let m=GRID_START;m<GRID_END;m+=60)html+=`<div class="hour"><span class="lbl mono">${fmtTime(m)}</span></div>`;
@@ -350,10 +378,10 @@ function renderTimetable(){
         lane.appendChild(el);
       });
     });
-    const strip=document.getElementById('conflictStrip');
-    if(conf.size){strip.className='conflict-strip show';strip.innerHTML=`⚠ <strong>${conf.size} sessions clash</strong> on this day — outlined in red. The higher-priority one sits on the left; tap any session to set High / Med / Low.`;}
+    if(conf.size){strip.className='conflict-strip show';strip.innerHTML=`<svg class="ico"><use href="#i-alert"></use></svg><strong>${conf.size} sessions clash</strong> on this day — outlined in red. The higher-priority one sits on the left; tap any session to set High / Med / Low.`;}
     else{strip.className='conflict-strip';strip.innerHTML='';}
   }
+  if(!evs.length){strip.className='conflict-strip';strip.innerHTML='';}
   updateNowLine();
   renderLegend(evs);
 }
@@ -370,6 +398,7 @@ function updateNowLine(){
 function isLiveNow(c){const {iso,min}=pdtNow();return c.day===iso&&c.s0!=null&&c.e0!=null&&c.s0<=min&&min<c.e0;}
 function syncDayChips(){
   document.querySelectorAll('#dayChips .chip').forEach(c=>c.setAttribute('aria-pressed',String(c.dataset.val===filterDay)));
+  renderActiveFilters();
 }
 function updateLiveChip(){
   const chip=document.getElementById('liveChip');if(!chip)return;
@@ -407,8 +436,8 @@ function renderPriorityPop(e,anchor){
   pop.innerHTML=`<h4>${esc(e.t)}</h4>
     <div class="pm">${esc(e.program)} · ${fmtTime(e.s0)}–${fmtTime(e.e0)}${e.room?(' · '+esc(e.room)):''}</div>
     ${(e.url||e.room)?`<div class="pop-actions">
-      ${e.url?`<a class="pop-link" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">↗ View on schedule site</a>`:''}
-      ${e.room?`<button class="pop-link" id="popFloorBtn" type="button">📍 Show on floor plan</button>`:''}
+      ${e.url?`<a class="pop-link" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer"><svg class="ico"><use href="#i-external"></use></svg>View on schedule site</a>`:''}
+      ${e.room?`<button class="pop-link" id="popFloorBtn" type="button"><svg class="ico"><use href="#i-pin"></use></svg>Show on floor plan</button>`:''}
     </div>`:''}
     <div class="plabel">Priority when it clashes</div>
     <div class="pri-btns">
@@ -477,7 +506,7 @@ function openMapPop(venue,anchor){
   mapPop.innerHTML=`<div class="venue-name">${esc(venue.name)}</div>
     <div class="venue-addr">${esc(venue.address)}</div>
     <iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=${q}&output=embed"></iframe>
-    <a class="pop-link" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener noreferrer">↗ Open in Google Maps</a>`;
+    <a class="pop-link" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener noreferrer"><svg class="ico"><use href="#i-external"></use></svg>Open in Google Maps</a>`;
   mapPop.classList.add('show');
   positionPopover(mapPop,anchor,280,280,'left');
 }
@@ -651,52 +680,102 @@ function importJSON(file){
 
 /* ---- URL schedule sharing ---- */
 const SHARE_PARAM='p';
-function b64UrlEncode(s){
-  const bytes=new TextEncoder().encode(s);
-  let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));
+function b64UrlEncodeBytes(bytes){
+  let bin='';
+  bytes.forEach(b=>{bin+=String.fromCharCode(b);});
   return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
-function b64UrlDecode(s){
+function b64UrlDecodeBytes(s){
   const padded=s.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((s.length+3)%4);
   const bin=atob(padded);
-  const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
+  return Uint8Array.from(bin,c=>c.charCodeAt(0));
 }
-function sharePayload(){
+function denseShareBytes(){
+  const count=catalog.length;
+  const bitBytes=Math.ceil(count/8);
+  const priBytes=Math.ceil(count/4);
+  const bytes=new Uint8Array(5+bitBytes+priBytes);
+  bytes[0]=83;bytes[1]=51;bytes[2]=2;bytes[3]=bitBytes&255;bytes[4]=bitBytes>>8;
   const byId=new Map(catalog.map((c,i)=>[c.id,i]));
-  const picks=[];
+  picked.forEach(e=>{
+    const idx=byId.get(e.id);
+    if(idx==null)return;
+    bytes[5+(idx>>3)]|=1<<(idx&7);
+    const po=5+bitBytes+(idx>>2);
+    bytes[po]|=((e.pr||2)&3)<<((idx&3)*2);
+  });
+  return bytes;
+}
+function sparseShareBytes(){
+  const byId=new Map(catalog.map((c,i)=>[c.id,i]));
+  const rows=[];
   [...picked.values()]
     .sort((a,b)=>a.day.localeCompare(b.day)||(a.s0-b.s0)||a.t.localeCompare(b.t))
     .forEach(e=>{
       const idx=byId.get(e.id);
-      if(idx!=null){picks.push(idx,e.pr||2);}
+      if(idx!=null)rows.push([idx,e.pr||2]);
     });
-  return {v:1,p:picks};
+  const bytes=new Uint8Array(5+rows.length*2);
+  bytes[0]=83;bytes[1]=51;bytes[2]=1;bytes[3]=rows.length&255;bytes[4]=rows.length>>8;
+  rows.forEach(([idx,pr],i)=>{
+    const off=5+i*2;
+    bytes[off]=idx&255;
+    bytes[off+1]=((idx>>8)&1)|((pr&3)<<1);
+  });
+  return bytes;
 }
-function shareUrl(){
+function packedShareToken(){
+  const sparse=sparseShareBytes();
+  const dense=denseShareBytes();
+  return b64UrlEncodeBytes(sparse.length<=dense.length?sparse:dense);
+}
+function shareUrl(includeSchedule=false){
   const base=location.origin+location.pathname+location.search;
-  if(!picked.size)return base;
+  if(!includeSchedule||!picked.size)return base;
   const params=new URLSearchParams();
-  params.set(SHARE_PARAM,b64UrlEncode(JSON.stringify(sharePayload())));
+  params.set(SHARE_PARAM,packedShareToken());
   return base+'#'+params.toString();
+}
+function clearSharedScheduleUrl(){
+  if(!history.replaceState)return;
+  history.replaceState(null,document.title,shareUrl(false));
 }
 function applySharedSchedule(){
   const params=new URLSearchParams(location.hash.replace(/^#/,''));
   const raw=params.get(SHARE_PARAM);
   if(!raw)return false;
   try{
-    const data=JSON.parse(b64UrlDecode(raw));
-    if(data.v!==1||!Array.isArray(data.p))return false;
-    picked.clear();
-    for(let i=0;i<data.p.length;i+=2){
-      const c=catalog[data.p[i]];
-      if(c){const n=norm({...c,pr:data.p[i+1]||2});picked.set(n.id,n);}
+    const bytes=b64UrlDecodeBytes(raw);
+    if(bytes[0]===83&&bytes[1]===51&&bytes[2]===1){
+      const count=bytes[3]|(bytes[4]<<8);
+      picked.clear();
+      for(let i=0;i<count;i++){
+        const off=5+i*2;
+        const idx=bytes[off]|((bytes[off+1]&1)<<8);
+        const pr=(bytes[off+1]>>1)&3;
+        const c=catalog[idx];
+        if(c){const n=norm({...c,pr:pr||2});picked.set(n.id,n);}
+      }
+    }else if(bytes[0]===83&&bytes[1]===51&&bytes[2]===2){
+      const bitBytes=bytes[3]|(bytes[4]<<8);
+      picked.clear();
+      catalog.forEach((c,idx)=>{
+        if(bytes[5+(idx>>3)]&(1<<(idx&7))){
+          const prByte=bytes[5+bitBytes+(idx>>2)]||0;
+          const pr=(prByte>>((idx&3)*2))&3;
+          const n=norm({...c,pr:pr||2});
+          picked.set(n.id,n);
+        }
+      });
+    }else{
+      return false;
     }
-    const first=[...picked.values()].find(e=>e.day);
-    if(first)activeDay=first.day;
-    saveState();
-    toast('Loaded shared schedule: '+picked.size+' session'+(picked.size===1?'':'s'));
-    return true;
+      const first=[...picked.values()].find(e=>e.day);
+      if(first)activeDay=first.day;
+      saveState();
+      clearSharedScheduleUrl();
+      toast('Loaded shared schedule: '+picked.size+' session'+(picked.size===1?'':'s'));
+      return true;
   }catch(e){
     console.warn('Could not load shared schedule from URL.',e);
     toast('Could not load shared schedule');
@@ -707,22 +786,43 @@ function applySharedSchedule(){
 const sharePop=document.getElementById('sharePop');
 function openSharePop(anchor){
   closePop();closeMapPop();
-  const url=shareUrl();
-  sharePop.innerHTML=`<div class="share-title">${picked.size?'Scan to open this schedule':'Scan to open this page'}</div>
+  const hasPicks=picked.size>0;
+  let includeSchedule=false;
+  sharePop.innerHTML=`<div class="share-title">Share this app</div>
+    <div class="share-copy">Scan the QR code or copy the app link.</div>
+    ${hasPicks?`<label class="share-option">
+      <input id="shareIncludeSchedule" type="checkbox">
+      <span>Include my schedule<small>Adds your selected sessions to the shared link.</small></span>
+    </label>`:''}
     <canvas id="qrCanvas"></canvas>
-    <div class="share-url mono">${esc(url)}</div>
+    <div class="share-url mono"></div>
+    <div class="share-summary mono"></div>
     <div class="pop-actions">
-      <button class="pop-link" id="btnCopyLink" type="button">⧉ Copy link</button>
-      ${navigator.share?'<button class="pop-link" id="btnNativeShare" type="button">↗ Share…</button>':''}
+      <button class="pop-link" id="btnCopyLink" type="button"><svg class="ico"><use href="#i-copy"></use></svg>Copy link</button>
+      ${navigator.share?'<button class="pop-link" id="btnNativeShare" type="button"><svg class="ico"><use href="#i-share"></use></svg>Share...</button>':''}
     </div>`;
-  try{drawQR(document.getElementById('qrCanvas'),url);}
-  catch(e){document.getElementById('qrCanvas').replaceWith('QR code unavailable for this link');}
+  const urlEl=sharePop.querySelector('.share-url');
+  const summaryEl=sharePop.querySelector('.share-summary');
+  const copyEl=sharePop.querySelector('.share-copy');
+  const canvas=document.getElementById('qrCanvas');
+  function currentShareUrl(){return shareUrl(includeSchedule);}
+  function renderShareQr(){
+    const url=currentShareUrl();
+    copyEl.textContent=includeSchedule?'Scan the QR code or copy a link with your selected sessions.':'Scan the QR code or copy the app link.';
+    urlEl.textContent=includeSchedule?('Schedule link - '+picked.size+' session'+(picked.size===1?'':'s')):'App link';
+    summaryEl.textContent='';
+    try{drawQR(canvas,url);}
+    catch(e){canvas.replaceWith('QR code unavailable for this link');}
+  }
+  const includeEl=document.getElementById('shareIncludeSchedule');
+  if(includeEl)includeEl.onchange=()=>{includeSchedule=includeEl.checked;renderShareQr();};
+  renderShareQr();
   document.getElementById('btnCopyLink').onclick=()=>{
-    navigator.clipboard.writeText(url).then(()=>toast('Link copied')).catch(()=>toast('Could not copy — copy it from the address bar'));};
+    navigator.clipboard.writeText(currentShareUrl()).then(()=>toast('Link copied')).catch(()=>toast('Could not copy - copy it from the address bar'));};
   const nsBtn=document.getElementById('btnNativeShare');
-  if(nsBtn)nsBtn.onclick=()=>{navigator.share({title:document.title,url}).catch(()=>{});};
+  if(nsBtn)nsBtn.onclick=()=>{navigator.share({title:document.title,url:currentShareUrl()}).catch(()=>{});};
   sharePop.classList.add('show');
-  positionPopover(sharePop,anchor,236,300,'right');
+  positionPopover(sharePop,anchor,236,340,'right');
 }
 function closeSharePop(){sharePop.classList.remove('show');}
 document.addEventListener('click',e=>{if(!sharePop.contains(e.target)&&e.target.id!=='btnShare')closeSharePop();});
@@ -752,6 +852,22 @@ function toastWithUndo(msg,onUndo){
   };
   toastT=setTimeout(()=>t.classList.remove('show','with-action'),5000);
 }
+function openClearConfirm(){
+  if(!picked.size){toast('Timetable is already empty');return;}
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function closeClearConfirm(){
+  document.getElementById('confirmOverlay').classList.remove('show');
+}
+function clearPickedSchedule(){
+  picked.clear();
+  saveState();
+  renderCatalog();
+  renderTimetable();
+  syncDayTabs();
+  closeClearConfirm();
+  toast('Cleared picks');
+}
 
 /* ---- wire up ---- */
 document.addEventListener('DOMContentLoaded',async ()=>{
@@ -779,7 +895,10 @@ document.addEventListener('DOMContentLoaded',async ()=>{
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeFloorPlan();});
   document.getElementById('btnLoadFile').onclick=()=>document.getElementById('fileInput').click();
   document.getElementById('fileInput').addEventListener('change',e=>{if(e.target.files[0])importJSON(e.target.files[0]);e.target.value='';});
-  document.getElementById('btnClear').onclick=()=>{if(!picked.size){toast('Timetable is already empty');return;}if(confirm('Remove all picked sessions? Your browse catalog stays.')){picked.clear();saveState();renderCatalog();renderTimetable();syncDayTabs();toast('Cleared picks');}};
+  document.getElementById('btnClear').onclick=openClearConfirm;
+  document.getElementById('btnCancelClear').onclick=closeClearConfirm;
+  document.getElementById('btnConfirmClear').onclick=clearPickedSchedule;
+  document.getElementById('confirmOverlay').addEventListener('click',e=>{if(e.target.id==='confirmOverlay')closeClearConfirm();});
 
   const swB=document.getElementById('swBrowse'),swD=document.getElementById('swDay');
   const setView=w=>{swB.setAttribute('aria-pressed',String(w==='browse'));swD.setAttribute('aria-pressed',String(w==='day'));document.getElementById('browseCol').dataset.hidden=String(w!=='browse');document.getElementById('dayCol').dataset.hidden=String(w!=='day');};
@@ -794,5 +913,6 @@ window.App = {
   get picked(){ return picked; },
   get pop(){ return pop; },
   togglePick,
+  shareUrl,
   openFloorPlan,
 };

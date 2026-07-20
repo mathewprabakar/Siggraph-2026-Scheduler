@@ -8,21 +8,32 @@
 <link rel="stylesheet" href="styles/app.css">
 </head>
 <body>
+<svg class="icon-sprite" aria-hidden="true">
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M8 12h8"/><path d="M13 7l5 5-5 5"/><path d="M5 19V5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 5h5v5"/><path d="M19 5l-9 9"/><path d="M19 14v5H5V5h5"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path fill="var(--wine)" stroke="none" d="M12 22s7.5-6.8 7.5-13A7.5 7.5 0 0 0 4.5 9c0 6.2 7.5 13 7.5 13z"/><circle fill="#fff" stroke="none" cx="12" cy="9" r="2.9"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4l9 16H3L12 4z"/><path d="M12 9v5M12 17h.01"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+</svg>
 <header>
   <div class="head-inner">
     <div class="brand">
       <span class="k">SIGGRAPH 2026 · Los Angeles</span>
       <h1>My Timetable</h1>
-      <span class="dates mono">19–23 July 2026 · times in PDT</span>
+      <span class="dates mono">July 19–23, 2026 · All times PDT</span>
     </div>
     <div class="head-tools">
       <span class="save-note" id="saveNote">Saved locally</span>
-      <button class="tbtn" id="btnFloorPlan" title="Browse the LA Convention Center floor plan">🗺 Floor plan</button>
-      <button class="tbtn" id="btnShare" title="Share this page as a QR code or link">🔗 Share</button>
-      <button class="tbtn" id="btnLoadFile" title="Load a saved picks file">Load</button>
-      <button class="tbtn" id="btnExportJson" title="Download a backup of your picks as a .json file">Export picks</button>
-      <button class="tbtn solid" id="btnIcs">Add to calendar</button>
-      <button class="tbtn danger" id="btnClear">Clear</button>
+      <button class="tbtn secondary" id="btnShare" title="Share this schedule as a QR code or link"><svg class="ico"><use href="#i-share"></use></svg>Share</button>
+      <button class="tbtn solid" id="btnIcs"><svg class="ico"><use href="#i-calendar"></use></svg>Add to calendar</button>
+      <button class="tbtn" id="btnFloorPlan" title="Browse the LA Convention Center floor plan"><svg class="ico"><use href="#i-map"></use></svg>Floor plan</button>
+      <button class="tbtn quiet" id="btnLoadFile" title="Import a saved picks file"><svg class="ico"><use href="#i-upload"></use></svg>Import</button>
+      <button class="tbtn quiet" id="btnExportJson" title="Download a backup of your picks as a .json file"><svg class="ico"><use href="#i-download"></use></svg>Export</button>
       <input type="file" id="fileInput" accept=".json" hidden>
     </div>
   </div>
@@ -42,22 +53,32 @@
         <div class="daychips" id="dayChips"></div>
         <div class="filterbar">
           <button class="ftoggle" id="ftoggle" aria-expanded="false">Filters <span class="fcount" id="fcount">0</span></button>
-          <button class="clearf" id="clearFilters">Clear filters</button>
         </div>
         <div class="filterpanel" id="filterPanel">
+          <div class="filterpanel-head">
+            <span>Filters</span>
+            <button class="clearf" id="clearFilters">Clear</button>
+          </div>
           <details class="fgroup" data-group="program"><summary><span class="caret">▸</span>Program<span class="n"></span></summary><div class="checklist"></div></details>
           <details class="fgroup" data-group="ia"><summary><span class="caret">▸</span>Interest Area<span class="n"></span></summary><div class="checklist"></div></details>
           <details class="fgroup" data-group="kw"><summary><span class="caret">▸</span>Keyword<span class="n"></span></summary><div class="checklist"></div></details>
           <details class="fgroup" data-group="reg"><summary><span class="caret">▸</span>Registration Category<span class="n"></span></summary><div class="checklist"></div></details>
           <details class="fgroup" data-group="room"><summary><span class="caret">▸</span>Room<span class="n"></span></summary><div class="checklist"></div></details>
         </div>
+        <div class="active-filters" id="activeFilters"></div>
       </div>
       <div class="catalog" id="catalog"></div>
     </div>
   </section>
 
   <section id="dayCol">
-    <div class="col-head"><h2>My day</h2><span class="count" id="dayCount"></span></div>
+    <div class="col-head">
+      <h2>My day</h2>
+      <div class="col-head-actions">
+        <span class="count" id="dayCount"></span>
+        <button class="clear-day" id="btnClear" type="button">Clear</button>
+      </div>
+    </div>
     <div class="panel">
       <div class="day-tabs" id="dayTabs"></div>
       <div class="conflict-strip" id="conflictStrip"></div>
@@ -68,17 +89,27 @@
 </div>
 
 <footer class="theme-foot" id="themeFoot">
-  <span class="theme-foot-label">Color theme</span>
-  <select class="theme-select" id="themeSelect" aria-label="Color theme" title="Switch color theme">
-    <option value="siggraph">SIGGRAPH theme</option>
-    <option value="light">Light theme</option>
-    <option value="dark">Dark theme</option>
+  <span class="theme-foot-label">Theme</span>
+  <select class="theme-select" id="themeSelect" aria-label="Theme" title="Switch theme">
+    <option value="siggraph">SIGGRAPH</option>
+    <option value="light">Light</option>
+    <option value="dark">Dark</option>
   </select>
 </footer>
 
 <div class="pop" id="pop"></div>
 <div class="pop map-pop" id="mapPop"></div>
 <div class="pop share-pop" id="sharePop"></div>
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h3 id="confirmTitle">Clear My Day?</h3>
+    <p>This removes your selected sessions from My Day. You can add them again from Browse sessions.</p>
+    <div class="confirm-actions">
+      <button class="tbtn" id="btnCancelClear" type="button">Cancel</button>
+      <button class="tbtn danger-fill" id="btnConfirmClear" type="button">Clear My Day</button>
+    </div>
+  </div>
+</div>
 
 <div class="fp-overlay" id="fpOverlay">
   <div class="fp-modal">
