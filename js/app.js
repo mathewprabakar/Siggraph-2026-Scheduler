@@ -106,6 +106,7 @@ function norm(ev){
 const STORE_KEY='siggraph2026_timetable_v2';
 let catalog=SEED.map(norm);      // replaced by the fetched catalog at startup; SEED is the offline fallback
 let picked=new Map();            // id -> normalized event (with pr)
+let catalogGenerated='';
 let activeDay=DAYS[0].iso;
 let filterDay='';
 const F={program:new Set(),ia:new Set(),kw:new Set(),reg:new Set(),room:new Set()};
@@ -125,6 +126,7 @@ async function loadCatalog(){
     if(!res.ok)throw new Error('HTTP '+res.status);
     const data=await res.json();
     const arr=Array.isArray(data)?data:data.catalog;
+    catalogGenerated=Array.isArray(data)?'':(data.generated||'');
     if(Array.isArray(arr)&&arr.length){
       catalog=arr.map(norm);
       T_ROOM=deriveRooms(catalog);
@@ -157,10 +159,16 @@ function saveState(){
 }
 function updateSaveNote(){
   const n=document.getElementById('saveNote');
-  n.textContent=storageOK
-    ?(catalog.length+' sessions loaded')
-    :'Storage off - export your picks';
+  if(storageOK){
+    n.innerHTML=`<span>${catalog.length} sessions loaded</span>${catalogGenerated?`<small>Updated ${esc(fmtCatalogStamp(catalogGenerated))}</small>`:''}`;
+  }else n.textContent='Storage off - export your picks';
   n.style.color=storageOK?'':'var(--amber)';
+}
+
+function fmtCatalogStamp(iso){
+  const d=new Date(iso);
+  if(Number.isNaN(d.getTime()))return iso;
+  return d.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 }
 
 /* ---- build filter UI ---- */

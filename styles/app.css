@@ -96,7 +96,8 @@
   .tbtn.danger:hover{border-color:var(--wine);color:var(--wine)}
   .tbtn.danger-fill{background:var(--wine);border-color:var(--wine);color:#fff}
   .tbtn.danger-fill:hover{background:#6f1e2b;border-color:#6f1e2b;color:#fff}
-  .save-note{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);white-space:nowrap}
+  .save-note{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);white-space:nowrap;display:flex;flex-direction:column;line-height:1.25}
+  .save-note small{font:inherit;font-size:10px;color:var(--ink-soft)}
 
   .wrap{max-width:1320px;margin:0 auto;padding:18px;display:grid;grid-template-columns:minmax(0,456px) minmax(0,1fr);gap:18px;align-items:start}
   .col-head{display:flex;align-items:baseline;justify-content:space-between;margin:0 2px 10px}
