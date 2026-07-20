@@ -97,6 +97,27 @@ def check_layout(engine: str, browser, index_url: str) -> None:
         record(overflow <= 1, f"{name} ({w}x{h}) no horizontal overflow",
                f"content is {overflow}px wider than the viewport")
         record(len(errors) == 0, f"{name} ({w}x{h}) no console/page errors", "; ".join(errors))
+        if w > 920:
+            day_chip_rows = page.evaluate("""
+                () => {
+                  document.getElementById('liveChip').classList.add('show');
+                  const tops = [...document.querySelectorAll('#dayChips .chip')]
+                    .filter(el => getComputedStyle(el).display !== 'none')
+                    .map(el => Math.round(el.getBoundingClientRect().top));
+                  return new Set(tops).size;
+                }
+            """)
+            record(day_chip_rows == 1, f"{name} ({w}x{h}) day filters stay on one line with Live",
+                   f"rows={day_chip_rows}")
+        day_tab_rows = page.evaluate("""
+            () => {
+              const tops = [...document.querySelectorAll('#dayTabs .day-tab')]
+                .map(el => Math.round(el.getBoundingClientRect().top));
+              return new Set(tops).size;
+            }
+        """)
+        record(day_tab_rows == 1, f"{name} ({w}x{h}) My Day rail stays on one line",
+               f"rows={day_tab_rows}")
         context.close()
 
 
@@ -112,12 +133,15 @@ def check_session_flow(engine: str, browser, index_url: str) -> None:
           cands.forEach(c => App.togglePick(c));
           document.getElementById('swDay').click();
           return { pickedCount: App.picked.size, tileCount: document.querySelectorAll('.ev').length,
-                   xCount: document.querySelectorAll('.ev .x').length };
+                   xCount: document.querySelectorAll('.ev .x').length,
+                   saveNote: document.getElementById('saveNote').textContent };
         }
     """)
     record(picked["pickedCount"] == 2, "two sessions added to My Day", f"picked.size={picked['pickedCount']}")
     record(picked["tileCount"] == 2, "both sessions render as grid tiles", f"tiles={picked['tileCount']}")
     record(picked["xCount"] == 0, "grid tiles have no '.x' delete control")
+    record("saved" not in picked["saveNote"].lower(), "header status does not duplicate My Day saved count",
+           picked["saveNote"])
 
     opened = page.evaluate("""
         () => { document.querySelector('.ev').click(); return App.pop.classList.contains('show'); }
@@ -174,13 +198,28 @@ def check_shared_schedule_link(engine: str, browser, index_url: str) -> None:
           const cands = App.catalog.filter(c => c.day && c.s0 != null && c.e0 != null).slice(0, 2);
           cands.forEach(c => App.togglePick(c));
           document.getElementById('btnShare').click();
+          const defaultUrl = App.shareUrl(false);
+          const optIn = document.getElementById('shareIncludeSchedule');
+          const optedOut = !optIn.checked && !defaultUrl.includes('#p=');
+          const defaultLabel = document.querySelector('#sharePop .share-url').textContent;
+          optIn.click();
+          const url = App.shareUrl(true);
+          const appUrl = App.shareUrl(false);
           return {
-            url: document.querySelector('#sharePop .share-url').textContent,
+            url,
+            appUrl,
+            optedOut,
+            defaultLabel,
+            label: document.querySelector('#sharePop .share-url').textContent,
             titles: cands.map(c => c.t),
           };
         }
     """)
+    record(shared["optedOut"], "Share QR defaults to app-only")
+    record(shared["defaultLabel"] == "App link", "app share UI uses a friendly link label")
     record("#p=" in shared["url"], "Share QR link includes encoded picks")
+    record(len(shared["url"]) < len(shared["appUrl"]) + 40, "small shared schedules use a compact sparse link")
+    record(shared["label"].startswith("Schedule link"), "schedule share UI uses a friendly link label")
 
     shared_context = browser.new_context(viewport={"width": 390, "height": 844})
     shared_page = shared_context.new_page()
@@ -342,6 +381,23 @@ def check_floorplan(engine: str, browser, index_url: str) -> None:
     record(l2["highlighted"] == "r411", "411 Theatre highlights on Level 2", f"hl={l2['highlighted']}")
     record(any("lacc-level2.svg" in u for u in svg_reqs), "Level 2 SVG fetched on open")
 
+    dark_levels = page.evaluate("""
+        () => {
+          document.documentElement.dataset.theme = 'dark';
+          const active = getComputedStyle(document.getElementById('fpLv2'));
+          const inactive = getComputedStyle(document.getElementById('fpLv1'));
+          return {
+            activeBg: active.backgroundColor,
+            inactiveBg: inactive.backgroundColor,
+            activeColor: active.color,
+            inactiveColor: inactive.color,
+          };
+        }
+    """)
+    record(dark_levels["activeBg"] != dark_levels["inactiveBg"],
+           "dark theme preserves the active floor-plan level indicator",
+           f"active={dark_levels['activeBg']} inactive={dark_levels['inactiveBg']}")
+
     record(len(errors) == 0, "no console/page errors during floor-plan use", "; ".join(errors))
     context.close()
 
@@ -356,6 +412,9 @@ def main() -> int:
                     check_layout(engine, browser, index_url)
                     check_session_flow(engine, browser, index_url)
                     check_shared_schedule_link(engine, browser, index_url)
+                    check_large_share_qr(engine, browser, index_url)
+                    check_filter_chips(engine, browser, index_url)
+                    check_clear_confirmation(engine, browser, index_url)
                     check_floorplan(engine, browser, index_url)
                 finally:
                     browser.close()
