@@ -78,7 +78,7 @@ def fresh_page(context) -> tuple[Page, list[str]]:
     page.evaluate("localStorage.clear()")
     page.reload()
     # The catalog now loads asynchronously via fetch(); wait for it before checking.
-    page.wait_for_function("typeof catalog !== 'undefined' && catalog.length > 0", timeout=10000)
+    page.wait_for_function("window.App && App.catalog.length > 0", timeout=10000)
     return page, errors
 
 
@@ -103,11 +103,11 @@ def check_session_flow(engine: str, browser) -> None:
 
     picked = page.evaluate("""
         () => {
-          const day = catalog.find(c => c.day && c.s0 != null && c.e0 != null).day;
-          const cands = catalog.filter(c => c.day === day && c.s0 != null && c.e0 != null).slice(0, 2);
-          cands.forEach(c => togglePick(c));
+          const day = App.catalog.find(c => c.day && c.s0 != null && c.e0 != null).day;
+          const cands = App.catalog.filter(c => c.day === day && c.s0 != null && c.e0 != null).slice(0, 2);
+          cands.forEach(c => App.togglePick(c));
           document.getElementById('swDay').click();
-          return { pickedCount: picked.size, tileCount: document.querySelectorAll('.ev').length,
+          return { pickedCount: App.picked.size, tileCount: document.querySelectorAll('.ev').length,
                    xCount: document.querySelectorAll('.ev .x').length };
         }
     """)
@@ -116,18 +116,18 @@ def check_session_flow(engine: str, browser) -> None:
     record(picked["xCount"] == 0, "grid tiles have no '.x' delete control")
 
     opened = page.evaluate("""
-        () => { document.querySelector('.ev').click(); return pop.classList.contains('show'); }
+        () => { document.querySelector('.ev').click(); return App.pop.classList.contains('show'); }
     """)
     record(opened, "tapping a tile opens the priority popup")
 
     removed = page.evaluate("""
         () => {
-          pop.querySelector('.remove').click();
+          App.pop.querySelector('.remove').click();
           const t = document.getElementById('toast');
           return {
-            popClosed: !pop.classList.contains('show'),
+            popClosed: !App.pop.classList.contains('show'),
             toastShown: t.classList.contains('show') && t.classList.contains('with-action'),
-            pickedCount: picked.size,
+            pickedCount: App.picked.size,
           };
         }
     """)
@@ -150,7 +150,7 @@ def check_session_flow(engine: str, browser) -> None:
     undone = page.evaluate("""
         () => {
           document.querySelector('#toast .toast-undo').click();
-          return { pickedCount: picked.size, tileCount: document.querySelectorAll('.ev').length };
+          return { pickedCount: App.picked.size, tileCount: document.querySelectorAll('.ev').length };
         }
     """)
     record(undone["pickedCount"] == 2, "Undo restores the removed session", f"picked.size={undone['pickedCount']}")
@@ -175,7 +175,7 @@ def check_floorplan(engine: str, browser) -> None:
     # Open a Level-1 room; its SVG should load and the room highlight should land.
     l1 = page.evaluate("""
         async () => {
-          await openFloorPlan('Hall K');
+          await App.openFloorPlan('Hall K');
           const hl = document.querySelector('#fpLevel1Wrap .fp-zone-outline.hl');
           return { open: document.getElementById('fpOverlay').classList.contains('show'),
                    svgInjected: !!document.querySelector('#fpLevel1Wrap svg'),
@@ -190,7 +190,7 @@ def check_floorplan(engine: str, browser) -> None:
     # Open a Level-2 room; Level 2's SVG should load lazily too.
     l2 = page.evaluate("""
         async () => {
-          await openFloorPlan('411 Theatre');
+          await App.openFloorPlan('411 Theatre');
           const hl = document.querySelector('#fpLevel2Wrap .fp-zone-outline.hl');
           return { svgInjected: !!document.querySelector('#fpLevel2Wrap svg'),
                    highlighted: hl ? hl.dataset.zone : null };
