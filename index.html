@@ -199,8 +199,6 @@
   .ev.compact{padding:4px 8px}
   .ev.compact .et{white-space:nowrap;text-overflow:ellipsis}
   .ev.conflict{outline:2px solid var(--wine);outline-offset:-2px}
-  .ev .x{position:absolute;top:3px;right:4px;width:16px;height:16px;border-radius:5px;background:rgba(0,0,0,.22);color:#fff;font-size:12px;line-height:16px;text-align:center;font-weight:700;display:none}
-  .ev:hover .x{display:block}
   .ev .pri{position:absolute;top:4px;left:5px;font-family:var(--mono);font-size:9px;font-weight:800;letter-spacing:.04em;background:rgba(255,255,255,.26);border-radius:5px;padding:1px 4px;display:none}
   .ev.p-high{box-shadow:inset 3px 0 0 rgba(255,255,255,.85), 0 1px 3px rgba(42,66,73,.22)} .ev.p-low{opacity:.82}
   .ev .et{padding-left:2px}
@@ -255,8 +253,10 @@
   .fp-note{margin-top:12px;font-size:12.5px;color:var(--ink-soft)}
   .fp-legend{margin-top:10px;font-size:11px;color:var(--ink-soft);font-family:var(--mono)}
 
-  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;transition:.22s;z-index:80;pointer-events:none;box-shadow:var(--shadow)}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;transition:.22s;z-index:80;pointer-events:none;box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;max-width:calc(100vw - 40px);white-space:nowrap}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.with-action{pointer-events:auto}
+  .toast-undo{border:none;background:none;padding:0;font-size:13px;font-weight:700;color:var(--teal-ink);text-decoration:underline;cursor:pointer;font-family:inherit;flex-shrink:0}
 
   @media (max-width:920px){
     .wrap{grid-template-columns:1fr;gap:0}
@@ -18080,15 +18080,14 @@ function renderTimetable(){
         const el=document.createElement('div');
         const short=h<40;
         el.className='ev'+(conf.has(e.id)?' conflict':'')+(e.pr===1?' p-high':'')+(e.pr===3?' p-low':'')+(short?' compact':'');
+        el.dataset.id=e.id;
         el.style.top=top+'px';el.style.height=h+'px';
         el.style.left=`calc(${col*wPct}% + ${col?gutter/2:0}px)`;
         el.style.width=`calc(${wPct}% - ${gutter}px)`;
         el.style.background=colorFor(e.program);
-        el.innerHTML=`<span class="x" title="Remove">×</span>
-          <span class="et">${esc(e.t)}</span>
+        el.innerHTML=`<span class="et">${esc(e.t)}</span>
           ${short?'':`<span class="em">${esc(e.room||'')}</span>`}
           <span class="em">${fmtTime(e.s0)}–${fmtTime(e.e0)}${short&&e.room?(' · '+esc(e.room)):''}</span>`;
-        el.querySelector('.x').onclick=(ev)=>{ev.stopPropagation();picked.delete(e.id);saveState();renderCatalog();renderTimetable();syncDayTabs();closePop();toast('Removed');};
         el.onclick=(ev)=>{ev.stopPropagation();openPop(e,el);};
         lane.appendChild(el);
       });
@@ -18143,6 +18142,9 @@ function syncDayTabs(){
 const pop=document.getElementById('pop');
 function openPop(e,anchor){
   closeMapPop();
+  renderPriorityPop(e,anchor);
+}
+function renderPriorityPop(e,anchor){
   pop.innerHTML=`<h4>${esc(e.t)}</h4>
     <div class="pm">${esc(e.program)} · ${fmtTime(e.s0)}–${fmtTime(e.e0)}${e.room?(' · '+esc(e.room)):''}</div>
     ${(e.url||e.room)?`<div class="pop-actions">
@@ -18158,18 +18160,29 @@ function openPop(e,anchor){
     <div class="hint">Higher priority sits to the left when sessions overlap. Low priority also dims slightly.</div>
     <button class="remove">Remove from my day</button>`;
   pop.querySelectorAll('.pri-btns button').forEach(b=>b.onclick=()=>{setPriority(e.id,parseInt(b.dataset.pr,10));pop.querySelectorAll('.pri-btns button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
-  pop.querySelector('.remove').onclick=()=>{picked.delete(e.id);saveState();renderCatalog();renderTimetable();syncDayTabs();closePop();toast('Removed');};
+  pop.querySelector('.remove').onclick=()=>removeWithUndo(e);
   const popFloorBtn=pop.querySelector('#popFloorBtn');
   if(popFloorBtn)popFloorBtn.onclick=()=>showLocation(e.room,popFloorBtn);
   pop.classList.add('show');
+  positionPop(anchor);
+}
+function positionPop(anchor){
   const r=anchor.getBoundingClientRect();
   const pw=250, ph=pop.offsetHeight||210;
   let left=window.scrollX+r.left; if(left+pw>window.scrollX+window.innerWidth-10)left=window.scrollX+window.innerWidth-pw-10;
   let top=window.scrollY+r.bottom+6; if(top+ph>window.scrollY+window.innerHeight-10)top=window.scrollY+r.top-ph-6;
   pop.style.left=Math.max(10,left)+'px';pop.style.top=Math.max(10,top)+'px';
 }
+function removeWithUndo(e){
+  picked.delete(e.id);saveState();renderCatalog();renderTimetable();syncDayTabs();
+  closePop();
+  toastWithUndo('Removed from My Day',()=>{
+    picked.set(e.id,e);saveState();renderCatalog();renderTimetable();syncDayTabs();
+    toast('Restored');
+  });
+}
 function closePop(){pop.classList.remove('show');}
-document.addEventListener('click',e=>{if(!pop.contains(e.target))closePop();});
+document.addEventListener('click',e=>{if(!e.composedPath().includes(pop))closePop();});
 window.addEventListener('resize',closePop);
 
 /* ---- off-site venues: Google Maps tooltip ----
@@ -18362,7 +18375,27 @@ function importJSON(file){
 /* ---- utils ---- */
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function download(name,text,mime){const b=new Blob([text],{type:mime});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);}
-let toastT;function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2000);}
+let toastT;
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.remove('with-action');
+  t.classList.add('show');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>t.classList.remove('show'),2000);
+}
+function toastWithUndo(msg,onUndo){
+  const t=document.getElementById('toast');
+  t.innerHTML=`<span>${esc(msg)}</span><button class="toast-undo" type="button">Undo</button>`;
+  t.classList.add('show','with-action');
+  clearTimeout(toastT);
+  t.querySelector('.toast-undo').onclick=()=>{
+    clearTimeout(toastT);
+    t.classList.remove('show','with-action');
+    onUndo();
+  };
+  toastT=setTimeout(()=>t.classList.remove('show','with-action'),5000);
+}
 
 /* ---- manual add ---- */
 function addCustomFromForm(){
