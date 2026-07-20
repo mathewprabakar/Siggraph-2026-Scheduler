@@ -12,3 +12,8 @@ uv sync --extra render
 uv run playwright install chromium
 uv run refresh_siggraph.py --render
 
+# after changing index.html: layout + functional smoke tests (Chromium + WebKit)
+uv sync --extra test
+uv run playwright install chromium webkit
+uv run check_page.py
+

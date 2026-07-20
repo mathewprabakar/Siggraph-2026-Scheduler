@@ -10,9 +10,11 @@ dependencies = [
 # Optional extras — the script works without these:
 #   fast   : lxml parser (script falls back to the stdlib html.parser if absent)
 #   render : headless-browser --render mode for pulling the live page
+#   test   : headless-browser checks for check_page.py (layout + functional smoke tests)
 [project.optional-dependencies]
 fast = ["lxml>=5.0"]
 render = ["playwright>=1.44"]
+test = ["playwright>=1.44"]
 
 # This is a single script, not an installable package, so uv shouldn't try to build it.
 [tool.uv]
