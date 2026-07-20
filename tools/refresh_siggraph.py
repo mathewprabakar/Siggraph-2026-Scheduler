@@ -25,6 +25,7 @@ Requires:  pip install beautifulsoup4
 import sys, json, argparse, re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import urljoin
 
 PDT = timezone(timedelta(hours=-7))  # SIGGRAPH week is July -> PDT is a fixed UTC-7
 DEFAULT_URL = 'https://s2026.conference-schedule.org/'
@@ -38,6 +39,15 @@ PLURAL = {
     'Stage Session': 'Stage Sessions', "Educator's Day Session": "Educator's Day Sessions",
     'Panel': 'Panels', 'Keynote Speaker': 'Keynote Speakers', 'Art Paper': 'Art Papers',
 }
+
+
+def _normalize_line_endings(text):
+    """Keep parser input and generated JSON stable across Windows/macOS/Linux."""
+    return text.replace('\r\n', '\n').replace('\r', '\n')
+
+
+def _clean_text(text):
+    return re.sub(r'\s+', ' ', text.replace('\xa0', ' ')).strip()
 
 
 def _soup(html):
@@ -67,9 +77,41 @@ def _tags(item, cls):
         return []
     out = []
     for d in grp.select('.program-track'):
-        v = d.get_text(strip=True)
+        v = _clean_text(d.get_text(' ', strip=True))
         if v and v not in out:
             out.append(v)
+    return out
+
+
+def _write_catalog_json(output, out):
+    """Write the historical catalog shape: compact header, sorted item keys, LF."""
+    generated = json.dumps(out["generated"], ensure_ascii=False)
+    with output.open('w', encoding='utf-8', newline='\n') as f:
+        f.write('{"v": 2, "source": "SIGGRAPH 2026", ')
+        f.write(f'"count": {out["count"]}, "generated": {generated}, "catalog": [\n')
+        for i, item in enumerate(out["catalog"]):
+            stable_item = {k: item[k] for k in sorted(item)}
+            rendered = json.dumps(stable_item, ensure_ascii=False, indent=2)
+            if i:
+                f.write(',\n')
+            f.write('\n'.join('  ' + line for line in rendered.split('\n')))
+        f.write('\n]}')
+
+
+def _stable_generated(output, out):
+    if not output.exists():
+        return out
+    try:
+        old = json.loads(output.read_text(encoding='utf-8'))
+    except Exception:
+        return out
+    old_cmp = dict(old)
+    new_cmp = dict(out)
+    old_cmp.pop('generated', None)
+    new_cmp.pop('generated', None)
+    if old_cmp == new_cmp and old.get('generated'):
+        out = dict(out)
+        out['generated'] = old['generated']
     return out
 
 
@@ -80,7 +122,7 @@ def parse_html(html):
         title_el = it.select_one('.presentation-title')
         if not title_el:
             continue
-        t = title_el.get_text(' ', strip=True)
+        t = _clean_text(title_el.get_text(' ', strip=True))
         if not t:
             continue
         st = it.select_one('.dateTimeInfo.start-time')
@@ -99,12 +141,12 @@ def parse_html(html):
 
         etypes = []
         for e in it.select('.small-etypes .event-type-name'):
-            v = e.get_text(strip=True)
+            v = _clean_text(e.get_text(' ', strip=True))
             if v and v not in etypes:
                 etypes.append(v)
         if not etypes:
             pt = it.select_one('.presentation-type')
-            etypes = [pt.get_text(' ', strip=True)] if pt else ['Session']
+            etypes = [_clean_text(pt.get_text(' ', strip=True))] if pt else ['Session']
         programs = [PLURAL.get(x, x) for x in etypes]
 
         loc = it.select_one('.presentation-location')
@@ -117,18 +159,23 @@ def parse_html(html):
             m = re.search(r"toggle_session_contents\('(sess\d+)'\)", link.get('onclick', ''))
             if m:
                 url = f"https://s2026.conference-schedule.org/?post_type=page&p=16&sess={m.group(1)}"
+        if url:
+            url = urljoin(DEFAULT_URL, url)
         s = _fmt(smin)
         uid = f"{day}|{s}|{t}".lower().replace('  ', ' ')[:140]
         catalog.append({
             "id": uid, "t": t, "program": programs[0], "programs": programs,
             "day": day, "s": s, "e": _fmt(min(emin, 1439)),
-            "room": loc.get_text(' ', strip=True) if loc else "",
+            "room": _clean_text(loc.get_text(' ', strip=True)) if loc else "",
             "url": url,
             "ia": _tags(it, 'interest-area'),
             "kw": _tags(it, 'keyword'),
             "reg": _tags(it, 'registration-category'),
+            "_smin": smin,
         })
-    catalog.sort(key=lambda c: (c['day'], c['s'], c['t']))
+    catalog.sort(key=lambda c: (c['day'], c['_smin'], c['t']))
+    for c in catalog:
+        del c['_smin']
     return catalog
 
 
@@ -139,9 +186,10 @@ def render_live(url):
         browser = p.chromium.launch()
         try:
             page = browser.new_page()
-            page.goto(url, wait_until='networkidle', timeout=90000)
+            page.goto(url, wait_until='domcontentloaded', timeout=90000)
             page.wait_for_selector('.agenda-item', timeout=90000)
-            return page.content()
+            page.wait_for_timeout(5000)
+            return _normalize_line_endings(page.content())
         finally:
             browser.close()
 
@@ -162,7 +210,7 @@ def main():
         input_path = Path(args.input)
         if not input_path.exists():
             ap.error(f"saved HTML file not found: {input_path}")
-        html = input_path.read_text(encoding='utf-8', errors='replace')
+        html = _normalize_line_endings(input_path.read_text(encoding='utf-8', errors='replace'))
     else:
         url = args.render or DEFAULT_URL
         print(f"Rendering {url} in a headless browser ...", file=sys.stderr)
@@ -177,8 +225,8 @@ def main():
            "generated": datetime.now(timezone.utc).isoformat(), "catalog": catalog}
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open('w', encoding='utf-8') as f:
-        json.dump(out, f, ensure_ascii=False, indent=1)
+    out = _stable_generated(output, out)
+    _write_catalog_json(output, out)
 
     by_day = {}
     for c in catalog:
