@@ -649,11 +649,66 @@ function importJSON(file){
   r.readAsText(file);
 }
 
+/* ---- URL schedule sharing ---- */
+const SHARE_PARAM='p';
+function b64UrlEncode(s){
+  const bytes=new TextEncoder().encode(s);
+  let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64UrlDecode(s){
+  const padded=s.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((s.length+3)%4);
+  const bin=atob(padded);
+  const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+function sharePayload(){
+  const byId=new Map(catalog.map((c,i)=>[c.id,i]));
+  const picks=[];
+  [...picked.values()]
+    .sort((a,b)=>a.day.localeCompare(b.day)||(a.s0-b.s0)||a.t.localeCompare(b.t))
+    .forEach(e=>{
+      const idx=byId.get(e.id);
+      if(idx!=null){picks.push(idx,e.pr||2);}
+    });
+  return {v:1,p:picks};
+}
+function shareUrl(){
+  const base=location.origin+location.pathname+location.search;
+  if(!picked.size)return base;
+  const params=new URLSearchParams();
+  params.set(SHARE_PARAM,b64UrlEncode(JSON.stringify(sharePayload())));
+  return base+'#'+params.toString();
+}
+function applySharedSchedule(){
+  const params=new URLSearchParams(location.hash.replace(/^#/,''));
+  const raw=params.get(SHARE_PARAM);
+  if(!raw)return false;
+  try{
+    const data=JSON.parse(b64UrlDecode(raw));
+    if(data.v!==1||!Array.isArray(data.p))return false;
+    picked.clear();
+    for(let i=0;i<data.p.length;i+=2){
+      const c=catalog[data.p[i]];
+      if(c){const n=norm({...c,pr:data.p[i+1]||2});picked.set(n.id,n);}
+    }
+    const first=[...picked.values()].find(e=>e.day);
+    if(first)activeDay=first.day;
+    saveState();
+    toast('Loaded shared schedule: '+picked.size+' session'+(picked.size===1?'':'s'));
+    return true;
+  }catch(e){
+    console.warn('Could not load shared schedule from URL.',e);
+    toast('Could not load shared schedule');
+    return false;
+  }
+}
+
 const sharePop=document.getElementById('sharePop');
 function openSharePop(anchor){
   closePop();closeMapPop();
-  const url=location.href;
-  sharePop.innerHTML=`<div class="share-title">Scan to open this page</div>
+  const url=shareUrl();
+  sharePop.innerHTML=`<div class="share-title">${picked.size?'Scan to open this schedule':'Scan to open this page'}</div>
     <canvas id="qrCanvas"></canvas>
     <div class="share-url mono">${esc(url)}</div>
     <div class="pop-actions">
@@ -703,6 +758,7 @@ document.addEventListener('DOMContentLoaded',async ()=>{
   await loadCatalog();
   buildDayControls();
   loadState();
+  applySharedSchedule();
   buildFilterGroups();
   renderCatalog();renderTimetable();syncDayTabs();
 

@@ -160,6 +160,42 @@ def check_session_flow(engine: str, browser) -> None:
     context.close()
 
 
+def check_shared_schedule_link(engine: str, browser) -> None:
+    print(f"\n== {engine}: shared schedule link ==")
+    context = browser.new_context(viewport={"width": 390, "height": 844})
+    page, errors = fresh_page(context)
+
+    shared = page.evaluate("""
+        () => {
+          const cands = App.catalog.filter(c => c.day && c.s0 != null && c.e0 != null).slice(0, 2);
+          cands.forEach(c => App.togglePick(c));
+          document.getElementById('btnShare').click();
+          return {
+            url: document.querySelector('#sharePop .share-url').textContent,
+            titles: cands.map(c => c.t),
+          };
+        }
+    """)
+    record("#p=" in shared["url"], "Share QR link includes encoded picks")
+
+    shared_context = browser.new_context(viewport={"width": 390, "height": 844})
+    shared_page = shared_context.new_page()
+    shared_errors: list[str] = []
+    shared_page.on("pageerror", lambda exc: shared_errors.append(str(exc)))
+    shared_page.on("console", lambda msg: shared_errors.append(msg.text) if msg.type == "error" else None)
+    shared_page.goto(shared["url"])
+    shared_page.wait_for_function("window.App && App.picked.size === 2", timeout=10000)
+    restored = shared_page.evaluate("""
+        () => [...App.picked.values()].map(e => e.t).sort()
+    """)
+    record(restored == sorted(shared["titles"]), "shared link restores the selected sessions",
+           f"restored={restored}")
+    record(len(errors) == 0, "no console/page errors while creating share link", "; ".join(errors))
+    record(len(shared_errors) == 0, "no console/page errors while opening share link", "; ".join(shared_errors))
+    shared_context.close()
+    context.close()
+
+
 def check_floorplan(engine: str, browser) -> None:
     print(f"\n== {engine}: floor plan (lazy-loaded maps) ==")
     context = browser.new_context(viewport={"width": 1280, "height": 800})
@@ -211,6 +247,7 @@ def main() -> None:
             try:
                 check_layout(engine, browser)
                 check_session_flow(engine, browser)
+                check_shared_schedule_link(engine, browser)
                 check_floorplan(engine, browser)
             finally:
                 browser.close()
