@@ -160,6 +160,50 @@ def check_session_flow(engine: str, browser) -> None:
     context.close()
 
 
+def check_floorplan(engine: str, browser) -> None:
+    print(f"\n== {engine}: floor plan (lazy-loaded maps) ==")
+    context = browser.new_context(viewport={"width": 1280, "height": 800})
+    page, errors = fresh_page(context)
+
+    svg_reqs: list[str] = []
+    page.on("request", lambda r: svg_reqs.append(r.url) if r.url.endswith(".svg") else None)
+
+    # The two ~250KB maps must NOT load until the user opens the floor plan.
+    record(not any("lacc-level" in u for u in svg_reqs),
+           "floor-plan SVGs are not fetched on initial load", f"requested: {svg_reqs}")
+
+    # Open a Level-1 room; its SVG should load and the room highlight should land.
+    l1 = page.evaluate("""
+        async () => {
+          await openFloorPlan('Hall K');
+          const hl = document.querySelector('#fpLevel1Wrap .fp-zone-outline.hl');
+          return { open: document.getElementById('fpOverlay').classList.contains('show'),
+                   svgInjected: !!document.querySelector('#fpLevel1Wrap svg'),
+                   highlighted: hl ? hl.dataset.zone : null };
+        }
+    """)
+    record(l1["open"], "floor-plan modal opens")
+    record(l1["svgInjected"], "Level 1 SVG is injected on open")
+    record(l1["highlighted"] == "hallk", "Hall K highlights on Level 1", f"hl={l1['highlighted']}")
+    record(any("lacc-level1.svg" in u for u in svg_reqs), "Level 1 SVG fetched on open")
+
+    # Open a Level-2 room; Level 2's SVG should load lazily too.
+    l2 = page.evaluate("""
+        async () => {
+          await openFloorPlan('411 Theatre');
+          const hl = document.querySelector('#fpLevel2Wrap .fp-zone-outline.hl');
+          return { svgInjected: !!document.querySelector('#fpLevel2Wrap svg'),
+                   highlighted: hl ? hl.dataset.zone : null };
+        }
+    """)
+    record(l2["svgInjected"], "Level 2 SVG is injected on open")
+    record(l2["highlighted"] == "r411", "411 Theatre highlights on Level 2", f"hl={l2['highlighted']}")
+    record(any("lacc-level2.svg" in u for u in svg_reqs), "Level 2 SVG fetched on open")
+
+    record(len(errors) == 0, "no console/page errors during floor-plan use", "; ".join(errors))
+    context.close()
+
+
 def main() -> None:
     with sync_playwright() as p:
         for engine in ENGINES:
@@ -167,6 +211,7 @@ def main() -> None:
             try:
                 check_layout(engine, browser)
                 check_session_flow(engine, browser)
+                check_floorplan(engine, browser)
             finally:
                 browser.close()
 

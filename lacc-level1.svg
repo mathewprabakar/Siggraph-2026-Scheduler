@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 4000 4000">
   <defs>
     <style>
@@ -38,7 +37,7 @@
       }
 
       .cls-19 {
-        fill: url(#_10_lpi_20_);
+        fill: url(#l1-_10_lpi_20_);
       }
 
       .cls-6 {
@@ -104,13 +103,13 @@
       }
 
       .cls-23 {
-        clip-path: url(#clippath);
+        clip-path: url(#l1-clippath);
       }
     </style>
-    <clipPath id="clippath">
+    <clipPath id="l1-clippath">
       <rect class="cls-1" x="0" y="0" width="72" height="72"/>
     </clipPath>
-    <pattern id="_10_lpi_20_" data-name="10 lpi 20%" x="0" y="0" width="72" height="72" patternTransform="translate(13760.3179 -6398.4162) rotate(-45) scale(1.8518)" patternUnits="userSpaceOnUse" viewBox="0 0 72 72">
+    <pattern id="l1-_10_lpi_20_" data-name="10 lpi 20%" x="0" y="0" width="72" height="72" patternTransform="translate(13760.3179 -6398.4162) rotate(-45) scale(1.8518)" patternUnits="userSpaceOnUse" viewBox="0 0 72 72">
       <g>
         <rect class="cls-1" width="72" height="72"/>
         <g class="cls-23">
@@ -130,7 +129,7 @@
       </g>
     </pattern>
   </defs>
-  <g id="Level_1_Map" data-name="Level 1 Map">
+  <g id="l1-Level_1_Map" data-name="Level 1 Map">
     <path class="cls-20" d="M1670.61,1404.05h-168.26c-1122.49,0-1381.78,861.6-1381.78,1289.08,0,14.95.34,29.8.85,44.64l-.26.27v211.81h547.85l1001.59-1000.67v-545.13Z"/>
     <path class="cls-21" d="M1275.73,2952.61l2.76,135.34h116.89c398.31-33.9,404.96-397.47,404.96-397.47v-22.33h884.9l201.34-201.33c38.59,25.75,98.27,48.26,170.44,46.53,101.84-2.46,172.62-44.26,208.03-87.06l-124.38-126.11,1.24-179.94,29.98-51.81v-238.57h414.87v-73.19h-1107.77v73.19h177.12v59.93l180.55-.31v178.94h110.67l36.63,55.79-1.26,177.57-320.76,313.15h-861.61v-374.25h-51.56l-78.17-78.17v-175.26l-963.49,962.59,130.9,43.4,107.93,40.52h248.61l81.17-81.16Z"/>
     <rect class="cls-21" x="3140.68" y="2300.19" width="91.3" height="65.44"/>
@@ -162,7 +161,7 @@
     <rect class="cls-20" x="3247.67" y="1498.55" width="123.34" height="55.91"/>
     <rect class="cls-20" x="3247.67" y="1561.76" width="123.34" height="14.75"/>
   </g>
-  <g id="Symbols">
+  <g id="l1-Symbols">
     <path class="cls-18" d="M927.86,2696.42h-4.88l-11.98-19.4h-.13l.08,1.08c.16,2.07.23,3.95.23,5.66v12.66h-3.61v-24.35h4.83l11.94,19.3h.1c-.02-.25-.07-1.18-.13-2.79-.07-1.6-.1-2.86-.1-3.76v-12.76h3.65v24.35Z"/>
     <rect class="cls-18" x="1721.54" y="2337.99" width="8.29" height="28.54"/>
     <polygon class="cls-18" points="1755.54 2366.54 1763.81 2366.54 1763.81 2337.99 1755.53 2337.99 1755.54 2366.54"/>
@@ -293,7 +292,7 @@
     <polygon class="cls-18" points="3325.47 1787.61 3309.19 1787.61 3309.19 1771.33 3298.34 1771.33 3298.34 1787.61 3282.06 1787.61 3282.06 1798.47 3298.34 1798.47 3298.34 1814.75 3309.19 1814.75 3309.19 1798.47 3325.47 1798.47 3325.47 1787.61"/>
     <polygon class="cls-18" points="1682.77 2338.01 1666.49 2338.01 1666.49 2321.73 1655.64 2321.73 1655.64 2338.01 1639.36 2338.01 1639.36 2348.87 1655.64 2348.87 1655.64 2365.15 1666.49 2365.15 1666.49 2348.87 1682.77 2348.87 1682.77 2338.01"/>
   </g>
-  <g id="Connector_Lines" data-name="Connector Lines">
+  <g id="l1-Connector_Lines" data-name="Connector Lines">
     <g>
       <line class="cls-10" x1="3199.63" y1="1960.27" x2="3199.63" y2="1960.27"/>
       <line class="cls-6" x1="3199.63" y1="1970.03" x2="3199.63" y2="2501.78"/>
@@ -346,7 +345,7 @@
     </g>
     <line class="cls-4" x1="3641.08" y1="1825.51" x2="3641.08" y2="1926.08"/>
   </g>
-  <g id="Text">
+  <g id="l1-Text">
     <rect class="cls-20" x="3033" y="1264.06" width="482.92" height="150.91"/>
     <g>
       <path class="cls-18" d="M2816.43,2093.58c0-6.94,5.32-12.1,11.89-12.1,5.61,0,10.36,4,11.4,9.67h-2.92c-1.01-4.2-4.22-6.84-8.48-6.84-5.25,0-9.02,3.79-9.02,9.26s3.69,9.19,8.89,9.26c4.55-.07,7.98-3.2,8.56-7.88h-9.52v-2.82h12.44v1.44c0,6.79-5.14,12.1-11.54,12.1-6.43-.19-11.71-5.3-11.71-12.1Z"/>
@@ -1274,7 +1273,7 @@
     </g>
     <rect class="cls-20" x="3111.29" y="1635.89" width="56.29" height="74.48"/>
   </g>
-  <g id="Legend">
+  <g id="l1-Legend">
     <rect class="cls-20" x="182.97" y="371.65" width="1450.05" height="387.46"/>
     <g>
       <rect class="cls-18" x="303.75" y="476.31" width="6.51" height="22.47" transform="translate(-181.18 793.51) rotate(-89.88)"/>
