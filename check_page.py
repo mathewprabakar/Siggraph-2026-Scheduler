@@ -19,12 +19,35 @@ Exits 0 if everything passes, 1 otherwise (with a summary of what failed).
 """
 from __future__ import annotations
 
+import functools
+import http.server
+import socketserver
 import sys
+import threading
 from pathlib import Path
 
 from playwright.sync_api import Page, sync_playwright
 
-INDEX_URL = (Path(__file__).parent / "index.html").resolve().as_uri()
+REPO_DIR = Path(__file__).parent.resolve()
+
+
+class _QuietHandler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *args) -> None:  # silence per-request logging
+        pass
+
+
+def _start_server() -> tuple[socketserver.TCPServer, int]:
+    """Serve the repo over HTTP. The app now fetches catalog/SVG files at runtime,
+    so it must be served (as it is on GitHub Pages), not opened via file://."""
+    handler = functools.partial(_QuietHandler, directory=str(REPO_DIR))
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    httpd.daemon_threads = True
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return httpd, httpd.server_address[1]
+
+
+_httpd, _port = _start_server()
+INDEX_URL = f"http://127.0.0.1:{_port}/index.html"
 
 VIEWPORTS = [
     ("phone-android", 360, 800),
@@ -54,6 +77,8 @@ def fresh_page(context) -> tuple[Page, list[str]]:
     page.goto(INDEX_URL)
     page.evaluate("localStorage.clear()")
     page.reload()
+    # The catalog now loads asynchronously via fetch(); wait for it before checking.
+    page.wait_for_function("typeof catalog !== 'undefined' && catalog.length > 0", timeout=10000)
     return page, errors
 
 
