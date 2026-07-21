@@ -360,6 +360,7 @@ function renderSessionCard(c){
   const wd=WEEKDAY_BY_ISO[c.day]||'';
   const el=document.createElement('div');
   el.className='cat-item'+(picked.has(c.id)?' picked':'');
+  el.dataset.id=c.id;
   el.innerHTML=`<span class="swatch" ${programColorAttr(c.program)} style="background:${colorFor(c.program)}"></span>
     <div class="cat-body"><p class="cat-title">${c.url?`<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" title="View on the SIGGRAPH schedule site" onclick="event.stopPropagation()">${titleWithExternalIcon(c.t,'ext-arrow')}</a>`:esc(c.t)}</p>
     <div class="cat-meta"><span class="tag">${esc(c.program)}</span><span>${wd} · ${c.s0!=null&&c.e0!=null?fmtTimeRange(c.s0,c.e0):'—'}</span>${c.room?`<span class="room-link" title="Show on floor plan"><svg class="ico"><use href="#i-pin"></use></svg>${esc(c.room)}</span>`:''}</div>
@@ -387,12 +388,23 @@ function renderCatalog(){
     box.appendChild(m);
   }
 }
+function syncCatalogPickedState(){
+  document.querySelectorAll('.cat-item[data-id]').forEach(el=>{
+    const isPicked=picked.has(el.dataset.id);
+    el.classList.toggle('picked',isPicked);
+    const btn=el.querySelector('.add-btn');
+    if(btn){
+      btn.title=isPicked?'Remove':'Add to my day';
+      btn.textContent=isPicked?'✓':'+';
+    }
+  });
+}
 
 /* ---- pick / priority ---- */
 function togglePick(ev){
   if(picked.has(ev.id)){picked.delete(ev.id);toast('Removed');}
   else{const n=norm({...ev,pr:2});picked.set(n.id,n);activeDay=ev.day;toast('Added to '+(WEEKDAY_BY_ISO[ev.day]||'day'));}
-  saveState();renderCatalog();renderTimetable();syncDayTabs();
+  saveState();syncCatalogPickedState();renderTimetable();syncDayTabs();
 }
 function setPriority(id,pr){const e=picked.get(id);if(!e)return;e.pr=pr;saveState();renderTimetable();}
 
@@ -495,10 +507,13 @@ function updateLiveChip(){
   }
 }
 setInterval(()=>{updateNowLine();updateLiveChip();},30000);
+function legendHtml(progs){
+  return progs.map(p=>`<span class="l"><span class="sw" ${programColorAttr(p)} style="background:${colorFor(p)}"></span>${esc(p)}</span>`).join('');
+}
 function renderLegend(evs){
   const leg=document.getElementById('legend');
   const progs=[...new Set(evs.map(e=>e.program))];
-  leg.innerHTML=progs.length?progs.map(p=>`<span class="l"><span class="sw" ${programColorAttr(p)} style="background:${colorFor(p)}"></span>${esc(p)}</span>`).join(''):'';
+  leg.innerHTML=progs.length?legendHtml(progs):'';
 }
 function syncDayTabs(){
   document.querySelectorAll('.day-tab').forEach(tab=>{

@@ -547,6 +547,97 @@ def check_registration_badge_toggle(engine: str, browser, index_url: str) -> Non
     context.close()
 
 
+def check_browse_scroll_stability(engine: str, browser, index_url: str) -> None:
+    print(f"\n== {engine}: Browse scroll stability ==")
+    context = browser.new_context(viewport={"width": 1280, "height": 800})
+    page, errors = fresh_page(context, index_url)
+
+    setup = page.evaluate("""
+        () => {
+          const catalog = document.getElementById('catalog');
+          const groups = new Map();
+          App.catalog.filter(c => c.day && c.s0 != null && c.e0 != null).forEach(c => {
+            if (!groups.has(c.day)) groups.set(c.day, []);
+            groups.get(c.day).push(c);
+          });
+          const daySessions = [...groups.values()].sort((a, b) => {
+            const ap = new Set(a.map(c => c.program)).size;
+            const bp = new Set(b.map(c => c.program)).size;
+            return bp - ap;
+          })[0];
+          daySessions.forEach(c => {
+            if (!App.picked.has(c.id)) App.togglePick(c);
+          });
+          catalog.scrollTop = Math.floor(catalog.scrollHeight * 0.42);
+          const browseBox = catalog.getBoundingClientRect();
+          const items = [...document.querySelectorAll('.cat-item')];
+          const visible = items.filter(el => {
+            const r = el.getBoundingClientRect();
+            return r.bottom > browseBox.top && r.top < Math.min(browseBox.bottom, window.innerHeight);
+          });
+          const target = visible[Math.floor(visible.length / 2)];
+          const index = items.indexOf(target);
+          const rect = target.getBoundingClientRect();
+          window.__browseStabilityTarget = target;
+          return {
+            index,
+            legendPrograms: new Set(daySessions.map(c => c.program)).size,
+            baseline: {
+              windowScroll: window.scrollY,
+              scrollTop: catalog.scrollTop,
+              clientHeight: catalog.clientHeight,
+              panelHeight: document.querySelector('#browseCol .panel').getBoundingClientRect().height,
+              top: rect.top,
+              height: rect.height,
+              nodeStable: true,
+            },
+          };
+        }
+    """)
+
+    snapshots = [setup["baseline"]]
+    for _ in range(6):
+        page.locator(".cat-item").nth(setup["index"]).locator(".add-btn").click()
+        page.wait_for_timeout(120)
+        snapshots.append(page.evaluate("""
+            (index) => {
+              const catalog = document.getElementById('catalog');
+              const target = document.querySelectorAll('.cat-item')[index];
+              const rect = target.getBoundingClientRect();
+              return {
+                windowScroll: window.scrollY,
+                scrollTop: catalog.scrollTop,
+                clientHeight: catalog.clientHeight,
+              panelHeight: document.querySelector('#browseCol .panel').getBoundingClientRect().height,
+              top: rect.top,
+              height: rect.height,
+              nodeStable: target === window.__browseStabilityTarget,
+            };
+          }
+        """, setup["index"]))
+
+    base = snapshots[0]
+    max_window_delta = max(abs(s["windowScroll"] - base["windowScroll"]) for s in snapshots)
+    max_scroll_delta = max(abs(s["scrollTop"] - base["scrollTop"]) for s in snapshots)
+    max_top_delta = max(abs(s["top"] - base["top"]) for s in snapshots)
+    max_height_delta = max(abs(s["height"] - base["height"]) for s in snapshots)
+    nodes_stable = all(s["nodeStable"] for s in snapshots)
+
+    record(nodes_stable, "Browse add/remove updates the existing card instead of rebuilding it")
+    record(max_window_delta < 1, "page scroll stays stable during repeated Browse add/remove",
+           f"max delta={max_window_delta}")
+    record(max_scroll_delta < 1, "Browse scroll offset stays stable during repeated add/remove",
+           f"max delta={max_scroll_delta}")
+    record(max_top_delta < 1, "visible Browse card position stays stable during repeated add/remove",
+           f"max delta={max_top_delta:.1f}")
+    record(max_height_delta < 1, "visible Browse card height stays stable during repeated add/remove",
+           f"max delta={max_height_delta:.1f}")
+    record(setup["legendPrograms"] > 1, "Browse stability check exercises a multi-program legend",
+           f"programs={setup['legendPrograms']}")
+    record(len(errors) == 0, "no console/page errors during Browse scroll stability check", "; ".join(errors))
+    context.close()
+
+
 def check_theme_switch_preserves_scroll(engine: str, browser, index_url: str) -> None:
     print(f"\n== {engine}: theme switch preserves scroll state ==")
     context = browser.new_context(viewport={"width": 1280, "height": 800})
@@ -752,6 +843,7 @@ def main() -> int:
                     check_large_share_qr(engine, browser, index_url)
                     check_filter_chips(engine, browser, index_url)
                     check_registration_badge_toggle(engine, browser, index_url)
+                    check_browse_scroll_stability(engine, browser, index_url)
                     check_theme_switch_preserves_scroll(engine, browser, index_url)
                     check_clear_confirmation(engine, browser, index_url)
                     check_floorplan(engine, browser, index_url)

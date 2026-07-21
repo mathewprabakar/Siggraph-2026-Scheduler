@@ -224,7 +224,7 @@
   .ev.p-high{box-shadow:inset 3px 0 0 rgba(255,255,255,.85), 0 1px 3px rgba(42,66,73,.22)} .ev.p-low{opacity:.82}
   .ev .et{padding-left:2px}
   .grid-empty{grid-column:2;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:13px;text-align:center;padding:40px 20px}
-  .legend{display:flex;gap:12px;flex-wrap:wrap;padding:2px 14px 14px}
+  .legend{display:flex;align-content:flex-start;align-items:center;gap:12px;flex-wrap:wrap;padding:2px 14px 14px}
   .legend .l{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-soft);font-family:var(--mono)}
   .legend .sw{width:11px;height:11px;border-radius:3px}
 
