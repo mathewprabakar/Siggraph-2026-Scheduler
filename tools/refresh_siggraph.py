@@ -25,7 +25,7 @@ Requires:  pip install beautifulsoup4
 import sys, json, argparse, re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from urllib.parse import urljoin
+from urllib.parse import parse_qs, urljoin, urlparse
 
 PDT = timezone(timedelta(hours=-7))  # SIGGRAPH week is July -> PDT is a fixed UTC-7
 DEFAULT_URL = 'https://s2026.conference-schedule.org/'
@@ -81,6 +81,32 @@ def _tags(item, cls):
         if v and v not in out:
             out.append(v)
     return out
+
+
+def _url_param(url, key):
+    if not url:
+        return ''
+    return (parse_qs(urlparse(url).query).get(key) or [''])[0]
+
+
+def _fallback_id(day, start, title):
+    return f"{day}|{start}|{title}".lower().replace('  ', ' ')[:140]
+
+
+def _occurrence_id(item):
+    return f"{item['sid']}|{item['day']}|{item['s']}" if item.get('sid') else _fallback_id(item['day'], item['s'], item['t'])
+
+
+def _assign_ids(catalog):
+    sid_counts = {}
+    for item in catalog:
+        sid = item.get('sid')
+        if sid:
+            sid_counts[sid] = sid_counts.get(sid, 0) + 1
+    for item in catalog:
+        sid = item.get('sid')
+        item['id'] = sid if sid and sid_counts[sid] == 1 else _occurrence_id(item)
+    return catalog
 
 
 def _write_catalog_json(output, out):
@@ -161,22 +187,26 @@ def parse_html(html):
                 url = f"https://s2026.conference-schedule.org/?post_type=page&p=16&sess={m.group(1)}"
         if url:
             url = urljoin(DEFAULT_URL, url)
+        sid = _url_param(url, 'sess')
+        pid = _url_param(url, 'id')
         s = _fmt(smin)
-        uid = f"{day}|{s}|{t}".lower().replace('  ', ' ')[:140]
-        catalog.append({
-            "id": uid, "t": t, "program": programs[0], "programs": programs,
+        item = {
+            "t": t, "program": programs[0], "programs": programs,
             "day": day, "s": s, "e": _fmt(min(emin, 1439)),
             "room": _clean_text(loc.get_text(' ', strip=True)) if loc else "",
             "url": url,
+            "sid": sid,
+            "pid": pid,
             "ia": _tags(it, 'interest-area'),
             "kw": _tags(it, 'keyword'),
             "reg": _tags(it, 'registration-category'),
             "_smin": smin,
-        })
+        }
+        catalog.append(item)
     catalog.sort(key=lambda c: (c['day'], c['_smin'], c['t']))
     for c in catalog:
         del c['_smin']
-    return catalog
+    return _assign_ids(catalog)
 
 
 def render_live(url):
