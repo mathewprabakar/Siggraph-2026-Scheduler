@@ -16,11 +16,10 @@
 uv lock
 
 # refresh the catalog (assets/data/siggraph2026-catalog.json) — the app fetches it automatically
-uv sync --extra render
-uv run playwright install chromium
+uv sync --extra fast
 uv run tools/refresh_siggraph.py
 
-# saved-page fallback (no browser rendering)
+# saved-page fallback
 uv sync --extra fast
 uv run tools/refresh_siggraph.py "Full Schedule - SIGGRAPH 2026 ....htm"
 

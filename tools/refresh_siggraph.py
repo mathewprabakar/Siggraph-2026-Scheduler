@@ -3,16 +3,16 @@
 refresh_siggraph.py  -  Build the SIGGRAPH 2026 catalog JSON for the timetable app.
 
 Why this exists: a browser page (especially a local file) can't fetch the schedule
-site directly -- CORS blocks cross-origin reads, and the main schedule page renders
-its sessions with JavaScript, so raw HTML is an empty shell. A terminal has no CORS,
-and a headless browser runs the page's JS, so both walls disappear here.
+site directly -- CORS blocks cross-origin reads. A terminal has no CORS wall, and
+the schedule page advertises the per-day HTML snippets it loads, so the default
+path fetches those snippets directly.
 
 Two ways to use it
 ------------------
-1) Fully automated (default; renders the live page for you):
+1) Fully automated (default; fetches the live page's per-day schedule snippets):
      python tools/refresh_siggraph.py
 
-2) From a saved page (no browser dependency, 100% reliable):
+2) From a saved page:
      - Open https://s2026.conference-schedule.org/  in your browser
      - Save Page As -> "Webpage, HTML Only"
      - python tools/refresh_siggraph.py "Full Schedule - SIGGRAPH 2026 ....htm"
@@ -22,14 +22,18 @@ Either way it writes  assets/data/siggraph2026-catalog.json , which the app fetc
 the app picks it up on next load.
 Requires:  pip install beautifulsoup4
 """
-import sys, json, argparse, re
+import sys, json, argparse, re, time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.error import URLError
 from urllib.parse import parse_qs, urljoin, urlparse
+from urllib.request import Request, urlopen
 
 PDT = timezone(timedelta(hours=-7))  # SIGGRAPH week is July -> PDT is a fixed UTC-7
 DEFAULT_URL = 'https://s2026.conference-schedule.org/'
 DEFAULT_OUTPUT = Path('assets/data/siggraph2026-catalog.json')
+FETCH_ATTEMPTS = 4
+FETCH_TIMEOUT = 45
 
 # Map the per-item type labels to the site's Program-filter names (plural forms)
 PLURAL = {
@@ -141,6 +145,90 @@ def _stable_generated(output, out):
     return out
 
 
+def _fetch_text(url, attempts=FETCH_ATTEMPTS, timeout=FETCH_TIMEOUT):
+    headers = {'User-Agent': 'Siggraph-2026-Scheduler catalog refresh'}
+    last_error = None
+    for attempt in range(1, attempts + 1):
+        try:
+            req = Request(url, headers=headers)
+            with urlopen(req, timeout=timeout) as res:
+                if getattr(res, 'status', 200) >= 400:
+                    raise RuntimeError(f"HTTP {res.status}")
+                return _normalize_line_endings(res.read().decode('utf-8', errors='replace'))
+        except (OSError, TimeoutError, URLError, RuntimeError) as e:
+            last_error = e
+            if attempt < attempts:
+                wait = min(2 ** attempt, 10)
+                print(f"  fetch failed ({attempt}/{attempts}) for {url}: {e}; retrying in {wait}s", file=sys.stderr)
+                time.sleep(wait)
+    raise RuntimeError(f"could not fetch {url}: {last_error}")
+
+
+def _discover_snippet_urls(index_html, base_url):
+    pattern = r'wp-content/linklings_snippets/wp_program_view_all_\d{4}-\d{2}-\d{2}\.txt(?:\?v=\d+)?'
+    urls = []
+    for path in re.findall(pattern, index_html):
+        url = urljoin(base_url, path)
+        if url not in urls:
+            urls.append(url)
+    urls.sort()
+    return urls
+
+
+def _snippet_days(snippet_urls):
+    days = []
+    for url in snippet_urls:
+        m = re.search(r'wp_program_view_all_(\d{4}-\d{2}-\d{2})\.txt', url)
+        if m and m.group(1) not in days:
+            days.append(m.group(1))
+    return sorted(days)
+
+
+def fetch_live_snippets(url):
+    """Fetch the same per-day schedule snippets that the live page loads via XHR."""
+    index_html = _fetch_text(url)
+    snippet_urls = _discover_snippet_urls(index_html, url)
+    if not snippet_urls:
+        raise RuntimeError("could not find schedule snippet URLs in the live page")
+    print(f"Found {len(snippet_urls)} schedule snippet files", file=sys.stderr)
+    fragments = []
+    for snippet_url in snippet_urls:
+        print(f"  fetching {snippet_url}", file=sys.stderr)
+        text = _fetch_text(snippet_url)
+        if 'agenda-item' not in text:
+            raise RuntimeError(f"schedule snippet had no agenda items: {snippet_url}")
+        fragments.append(text)
+    return '\n'.join(fragments), _snippet_days(snippet_urls)
+
+
+def _catalog_days(catalog):
+    by_day = {}
+    for c in catalog:
+        by_day[c['day']] = by_day.get(c['day'], 0) + 1
+    return by_day
+
+
+def _validate_catalog(catalog, output, expected_days=None):
+    by_day = _catalog_days(catalog)
+    missing_days = [day for day in (expected_days or []) if by_day.get(day, 0) == 0]
+    if missing_days:
+        raise RuntimeError(
+            f"parsed catalog looks partial: {len(catalog)} sessions, by day {by_day}, "
+            f"missing days {missing_days}"
+        )
+    if output.exists():
+        try:
+            old = json.loads(output.read_text(encoding='utf-8'))
+            old_count = int(old.get('count') or len(old.get('catalog') or []))
+        except Exception:
+            old_count = 0
+        if old_count > 0 and len(catalog) < old_count * 0.9:
+            raise RuntimeError(
+                f"refusing to replace {old_count} existing sessions with only {len(catalog)} parsed sessions"
+            )
+    return by_day
+
+
 def parse_html(html):
     soup = _soup(html)
     catalog = []
@@ -209,58 +297,34 @@ def parse_html(html):
     return _assign_ids(catalog)
 
 
-def render_live(url):
-    """Load the live page in a headless browser so its JS builds the session list."""
-    from playwright.sync_api import sync_playwright
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        try:
-            page = browser.new_page()
-            page.goto(url, wait_until='domcontentloaded', timeout=90000)
-            page.wait_for_selector('.agenda-item', timeout=90000)
-            page.wait_for_timeout(5000)
-            return _normalize_line_endings(page.content())
-        finally:
-            browser.close()
-
-
 def main():
     ap = argparse.ArgumentParser(description="Build siggraph2026-catalog.json for the timetable app.")
     ap.add_argument('input', nargs='?', help="a saved schedule .htm/.html file")
-    ap.add_argument('--render', metavar='URL', nargs='?',
-                    const=DEFAULT_URL,
-                    help="fetch & render a live schedule page via Playwright")
     ap.add_argument('-o', '--output', default=str(DEFAULT_OUTPUT))
     args = ap.parse_args()
-
-    if args.input and args.render:
-        ap.error("choose either a saved HTML input or --render, not both")
 
     if args.input:
         input_path = Path(args.input)
         if not input_path.exists():
             ap.error(f"saved HTML file not found: {input_path}")
         html = _normalize_line_endings(input_path.read_text(encoding='utf-8', errors='replace'))
+        expected_days = None
     else:
-        url = args.render or DEFAULT_URL
-        print(f"Rendering {url} in a headless browser ...", file=sys.stderr)
-        html = render_live(url)
+        print(f"Fetching schedule snippets from {DEFAULT_URL} ...", file=sys.stderr)
+        html, expected_days = fetch_live_snippets(DEFAULT_URL)
 
     catalog = parse_html(html)
     if len(catalog) < 50:
-        print(f"WARNING: only {len(catalog)} sessions parsed. If you fetched the live page "
-              f"without --render, it was probably an un-rendered shell.", file=sys.stderr)
+        print(f"WARNING: only {len(catalog)} sessions parsed. The input may be incomplete.", file=sys.stderr)
 
+    output = Path(args.output)
+    by_day = _validate_catalog(catalog, output, expected_days)
     out = {"v": 2, "source": "SIGGRAPH 2026", "count": len(catalog),
            "generated": datetime.now(timezone.utc).isoformat(), "catalog": catalog}
-    output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     out = _stable_generated(output, out)
     _write_catalog_json(output, out)
 
-    by_day = {}
-    for c in catalog:
-        by_day[c['day']] = by_day.get(c['day'], 0) + 1
     print(f"Wrote {len(catalog)} sessions to {output}")
     print("By day:", {k: by_day[k] for k in sorted(by_day)})
     print("Commit the updated JSON; the app fetches it automatically on next load.")

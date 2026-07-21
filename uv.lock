@@ -368,10 +368,6 @@ dependencies = [
 fast = [
     { name = "lxml" },
 ]
-render = [
-    { name = "playwright", version = "1.60.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "playwright", version = "1.61.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-]
 test = [
     { name = "playwright", version = "1.60.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "playwright", version = "1.61.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
@@ -381,10 +377,9 @@ test = [
 requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.12" },
     { name = "lxml", marker = "extra == 'fast'", specifier = ">=5.0" },
-    { name = "playwright", marker = "extra == 'render'", specifier = ">=1.44" },
     { name = "playwright", marker = "extra == 'test'", specifier = ">=1.44" },
 ]
-provides-extras = ["fast", "render", "test"]
+provides-extras = ["fast", "test"]
 
 [[package]]
 name = "soupsieve"
