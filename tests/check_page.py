@@ -6,6 +6,7 @@ Run this after any change to index.html:
     uv sync --extra test
     uv run playwright install chromium webkit   # one-time
     uv run tests/check_page.py
+    uv run tests/check_page.py --all-browsers   # full cross-browser run
 
 Checks, on both Chromium and WebKit (WebKit is Safari's engine — the closest
 automated proxy to real iOS behavior):
@@ -21,6 +22,7 @@ from __future__ import annotations
 
 import functools
 import http.server
+import argparse
 import socketserver
 import sys
 import threading
@@ -61,7 +63,8 @@ VIEWPORTS = [
     ("laptop", 1280, 800),
     ("desktop-large", 1920, 1080),
 ]
-ENGINES = ["chromium", "webkit"]
+DEFAULT_ENGINES = ["chromium"]
+ALL_ENGINES = ["chromium", "webkit"]
 
 failures: list[str] = []
 
@@ -604,11 +607,31 @@ def check_floorplan(engine: str, browser, index_url: str) -> None:
     context.close()
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run SIGGRAPH scheduler smoke tests.")
+    parser.add_argument(
+        "--all-browsers",
+        action="store_true",
+        help="run the suite in Chromium and WebKit; default is Chromium only",
+    )
+    parser.add_argument(
+        "--engine",
+        choices=ALL_ENGINES,
+        help="run the suite in one browser engine",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_args()
+    engines = ALL_ENGINES if args.all_browsers else DEFAULT_ENGINES
+    if args.engine:
+        engines = [args.engine]
+
     httpd, server_thread, index_url = _start_server()
     try:
         with sync_playwright() as p:
-            for engine in ENGINES:
+            for engine in engines:
                 browser = getattr(p, engine).launch()
                 try:
                     check_layout(engine, browser, index_url)
