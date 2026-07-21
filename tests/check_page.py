@@ -139,6 +139,10 @@ def check_session_flow(engine: str, browser, index_url: str) -> None:
           count: document.querySelectorAll('.cat-item .reg-bubble').length,
           labels: [...document.querySelectorAll('.cat-item .reg-bubble')].slice(0, 4).map(b => b.textContent.trim()),
           titles: [...document.querySelectorAll('.cat-item .reg-bubble')].slice(0, 4).map(b => b.getAttribute('title')),
+          titleIconInline: [...document.querySelectorAll('.cat-title a')].every(link => {
+            const tail = link.querySelector('.title-link-tail');
+            return !!tail && !!tail.querySelector('.ext-arrow') && getComputedStyle(tail).whiteSpace === 'nowrap';
+          }),
           ownLine: (() => {
             const card = document.querySelector('.cat-item:has(.reg-bubbles)');
             if (!card) return false;
@@ -156,6 +160,7 @@ def check_session_flow(engine: str, browser, index_url: str) -> None:
           })(),
         })
     """)
+    record(browse_regs["titleIconInline"], "browse title external-link icons stay with title text")
     record(browse_regs["count"] > 0, "browse session entries show registration bubbles")
     record(all(label for label in browse_regs["labels"]), "browse registration bubbles use compact labels",
            f"labels={browse_regs['labels']}")
@@ -199,6 +204,10 @@ def check_session_flow(engine: str, browser, index_url: str) -> None:
           const iconHref = sel => pop.querySelector(sel + ' use')?.getAttribute('href') || '';
           return {
             titleLink: !!pop.querySelector('.pop-title-link[href]'),
+            titleIconInline: (() => {
+              const tail = pop.querySelector('.pop-title-link .title-link-tail');
+              return !!tail && !!tail.querySelector('.ico') && getComputedStyle(tail).whiteSpace === 'nowrap';
+            })(),
             program: rowText('.pop-program'),
             programColor: getComputedStyle(pop.querySelector('.pop-program')).color,
             dateIcon: iconHref('.pop-date'),
@@ -226,6 +235,7 @@ def check_session_flow(engine: str, browser, index_url: str) -> None:
         }
     """)
     record(popup["titleLink"], "session popup title links to the schedule site")
+    record(popup["titleIconInline"], "session popup external-link icon stays with title text")
     record(popup["program"] == popup["expectedProgram"], "session popup shows the program as colored text",
            f"program={popup['program']}")
     record(popup["programColor"] != "", "session popup applies a program text color")

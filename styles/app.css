@@ -164,6 +164,7 @@
   .cat-title a{color:inherit;text-decoration:none}
   .cat-title a:hover{color:var(--teal-ink);text-decoration:underline}
   .cat-title a{display:inline}
+  .title-link-tail{display:inline-block;white-space:nowrap}
   .cat-title .ext-arrow{width:12px;height:12px;color:var(--teal-ink);vertical-align:-1px;margin-left:2px}
   .cat-meta{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);display:flex;gap:8px;flex-wrap:wrap}
   .cat-meta .tag{color:var(--teal-ink)}

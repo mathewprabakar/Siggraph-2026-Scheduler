@@ -118,6 +118,13 @@ function renderRegBubbles(regs){
   if(!regs||!regs.length)return '';
   return `<span class="reg-bubbles" aria-label="Registration categories">${regs.map(r=>{const code=REG_SHORT[r]||r;return `<span class="reg-bubble reg-${String(code).toLowerCase().replace(/[^a-z0-9]+/g,'-')}" title="${esc(r)}">${esc(code)}</span>`;}).join('')}</span>`;
 }
+function titleWithExternalIcon(title,iconClass=''){
+  const parts=String(title??'').trim().split(/\s+/);
+  const last=parts.pop()||'';
+  const lead=parts.length?esc(parts.join(' '))+' ':'';
+  const cls=iconClass?`ico ${iconClass}`:'ico';
+  return `${lead}<span class="title-link-tail">${esc(last)}&nbsp;<svg class="${cls}"><use href="#i-external"></use></svg></span>`;
+}
 function uid(ev){return (ev.day+'|'+ev.s+'|'+ev.t).toLowerCase().replace(/\s+/g,' ').slice(0,140);}
 function norm(ev){
   const s0=parseTime(ev.s), e0=ev.e!=null?parseTime(ev.e):null;
@@ -319,7 +326,7 @@ function renderSessionCard(c){
   const el=document.createElement('div');
   el.className='cat-item'+(picked.has(c.id)?' picked':'');
   el.innerHTML=`<span class="swatch" ${programColorAttr(c.program)} style="background:${colorFor(c.program)}"></span>
-    <div class="cat-body"><p class="cat-title">${c.url?`<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" title="View on the SIGGRAPH schedule site" onclick="event.stopPropagation()">${esc(c.t)} <svg class="ico ext-arrow"><use href="#i-external"></use></svg></a>`:esc(c.t)}</p>
+    <div class="cat-body"><p class="cat-title">${c.url?`<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" title="View on the SIGGRAPH schedule site" onclick="event.stopPropagation()">${titleWithExternalIcon(c.t,'ext-arrow')}</a>`:esc(c.t)}</p>
     <div class="cat-meta"><span class="tag">${esc(c.program)}</span><span>${wd} · ${c.s0!=null&&c.e0!=null?fmtTimeRange(c.s0,c.e0):'—'}</span>${c.room?`<span class="room-link" title="Show on floor plan"><svg class="ico"><use href="#i-pin"></use></svg>${esc(c.room)}</span>`:''}</div>
     ${renderRegBubbles(c.reg)}</div>
     <button class="add-btn" title="${picked.has(c.id)?'Remove':'Add to my day'}">${picked.has(c.id)?'✓':'+'}</button>`;
@@ -480,7 +487,7 @@ function openPop(e,anchor){
 }
 function renderPriorityPop(e,anchor){
   const title=e.url
-    ? `<a class="pop-title-link" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.t)} <svg class="ico"><use href="#i-external"></use></svg></a>`
+    ? `<a class="pop-title-link" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${titleWithExternalIcon(e.t)}</a>`
     : esc(e.t);
   const dayLabel=labelForDay(e.day);
   const regBubbles=renderRegBubbles(e.reg);
