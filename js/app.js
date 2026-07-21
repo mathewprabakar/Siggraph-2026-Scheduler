@@ -98,6 +98,16 @@ function fmtDuration(start,end){
   const h=Math.floor(mins/60),m=mins%60;
   return h+' hr'+(h===1?'':'s')+(m?' '+m+' min':'');
 }
+const REG_SHORT={
+  'Full Conference Supporter':'FCS',
+  'Full Conference':'FC',
+  'Experience':'E',
+  'Discover':'D',
+};
+function renderRegBubbles(regs){
+  if(!regs||!regs.length)return '';
+  return `<span class="reg-bubbles" aria-label="Registration categories">${regs.map(r=>{const code=REG_SHORT[r]||r;return `<span class="reg-bubble reg-${String(code).toLowerCase().replace(/[^a-z0-9]+/g,'-')}" title="${esc(r)}">${esc(code)}</span>`;}).join('')}</span>`;
+}
 function uid(ev){return (ev.day+'|'+ev.s+'|'+ev.t).toLowerCase().replace(/\s+/g,' ').slice(0,140);}
 function norm(ev){
   const s0=parseTime(ev.s), e0=ev.e!=null?parseTime(ev.e):null;
@@ -300,7 +310,8 @@ function renderSessionCard(c){
   el.className='cat-item'+(picked.has(c.id)?' picked':'');
   el.innerHTML=`<span class="swatch" style="background:${colorFor(c.program)}"></span>
     <div class="cat-body"><p class="cat-title">${c.url?`<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" title="View on the SIGGRAPH schedule site" onclick="event.stopPropagation()">${esc(c.t)} <svg class="ico ext-arrow"><use href="#i-external"></use></svg></a>`:esc(c.t)}</p>
-    <div class="cat-meta"><span class="tag">${esc(c.program)}</span><span>${wd} · ${c.s0!=null&&c.e0!=null?fmtTimeRange(c.s0,c.e0):'—'}</span>${c.room?`<span class="room-link" title="Show on floor plan"><svg class="ico"><use href="#i-pin"></use></svg>${esc(c.room)}</span>`:''}</div></div>
+    <div class="cat-meta"><span class="tag">${esc(c.program)}</span><span>${wd} · ${c.s0!=null&&c.e0!=null?fmtTimeRange(c.s0,c.e0):'—'}</span>${c.room?`<span class="room-link" title="Show on floor plan"><svg class="ico"><use href="#i-pin"></use></svg>${esc(c.room)}</span>`:''}</div>
+    ${renderRegBubbles(c.reg)}</div>
     <button class="add-btn" title="${picked.has(c.id)?'Remove':'Add to my day'}">${picked.has(c.id)?'✓':'+'}</button>`;
   el.querySelector('.add-btn').onclick=()=>togglePick(c);
   const roomLink=el.querySelector('.room-link');
@@ -460,6 +471,7 @@ function renderPriorityPop(e,anchor){
     ? `<a class="pop-title-link" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.t)} <svg class="ico"><use href="#i-external"></use></svg></a>`
     : esc(e.t);
   const dayLabel=labelForDay(e.day);
+  const regBubbles=renderRegBubbles(e.reg);
   pop.innerHTML=`<button class="remove pop-remove" type="button" title="Remove from My Day" aria-label="Remove from My Day"><svg class="ico"><use href="#i-trash"></use></svg></button>
     <h4>${title}</h4>
     <div class="pop-details">
@@ -468,6 +480,7 @@ function renderPriorityPop(e,anchor){
       <div class="pop-row pop-time"><svg class="ico"><use href="#i-clock"></use></svg><span>${fmtTimeRange(e.s0,e.e0)}</span></div>
       <div class="pop-row pop-duration"><svg class="ico"><use href="#i-hourglass"></use></svg><span>${fmtDuration(e.s0,e.e0)}</span></div>
       ${e.room?`<button class="pop-row pop-row-action" id="popFloorBtn" type="button" title="Show location on floor plan"><svg class="ico"><use href="#i-pin"></use></svg><span>${esc(e.room)}</span></button>`:''}
+      ${regBubbles?`<div class="pop-reg">${regBubbles}</div>`:''}
     </div>
     <div class="plabel">Priority</div>
     <div class="pri-btns">

@@ -126,10 +126,40 @@ def check_session_flow(engine: str, browser, index_url: str) -> None:
     context = browser.new_context(viewport={"width": 390, "height": 844}, has_touch=True)
     page, errors = fresh_page(context, index_url)
 
+    browse_regs = page.evaluate("""
+        () => ({
+          count: document.querySelectorAll('.cat-item .reg-bubble').length,
+          labels: [...document.querySelectorAll('.cat-item .reg-bubble')].slice(0, 4).map(b => b.textContent.trim()),
+          titles: [...document.querySelectorAll('.cat-item .reg-bubble')].slice(0, 4).map(b => b.getAttribute('title')),
+          ownLine: (() => {
+            const card = document.querySelector('.cat-item:has(.reg-bubbles)');
+            if (!card) return false;
+            const meta = card.querySelector('.cat-meta').getBoundingClientRect();
+            const regs = card.querySelector('.reg-bubbles').getBoundingClientRect();
+            return regs.top > meta.bottom - 1;
+          })(),
+          stableColors: (() => {
+            const bubbles = [...document.querySelectorAll('.cat-item .reg-bubble')].slice(0, 4);
+            const light = bubbles.map(b => getComputedStyle(b).backgroundColor);
+            document.documentElement.dataset.theme = 'dark';
+            const dark = bubbles.map(b => getComputedStyle(b).backgroundColor);
+            document.documentElement.dataset.theme = 'siggraph';
+            return light.every((c, i) => c === dark[i]);
+          })(),
+        })
+    """)
+    record(browse_regs["count"] > 0, "browse session entries show registration bubbles")
+    record(all(label for label in browse_regs["labels"]), "browse registration bubbles use compact labels",
+           f"labels={browse_regs['labels']}")
+    record(all(title for title in browse_regs["titles"]), "browse registration bubbles expose full category titles",
+           f"titles={browse_regs['titles']}")
+    record(browse_regs["ownLine"], "browse registration bubbles sit on their own line")
+    record(browse_regs["stableColors"], "registration bubble colors stay consistent between themes")
+
     picked = page.evaluate("""
         () => {
-          const day = App.catalog.find(c => c.day && c.s0 != null && c.e0 != null).day;
-          const cands = App.catalog.filter(c => c.day === day && c.s0 != null && c.e0 != null).slice(0, 2);
+          const day = App.catalog.find(c => c.day && c.s0 != null && c.e0 != null && c.reg.length).day;
+          const cands = App.catalog.filter(c => c.day === day && c.s0 != null && c.e0 != null && c.reg.length).slice(0, 2);
           cands.forEach(c => App.togglePick(c));
           document.getElementById('swDay').click();
           return { pickedCount: App.picked.size, tileCount: document.querySelectorAll('.ev').length,
@@ -169,6 +199,13 @@ def check_session_flow(engine: str, browser, index_url: str) -> None:
             time: rowText('.pop-time'),
             durationIcon: iconHref('.pop-duration'),
             duration: rowText('.pop-duration'),
+            regLabels: [...pop.querySelectorAll('.pop-reg .reg-bubble')].map(b => b.textContent.trim()),
+            regTitles: [...pop.querySelectorAll('.pop-reg .reg-bubble')].map(b => b.getAttribute('title')),
+            regAfterLocation: (() => {
+              const location = pop.querySelector('.pop-row-action').getBoundingClientRect();
+              const regs = pop.querySelector('.pop-reg').getBoundingClientRect();
+              return regs.top > location.bottom - 1;
+            })(),
             locationIcon: iconHref('.pop-row-action'),
             location: rowText('.pop-row-action'),
             removeLabel: pop.querySelector('.remove')?.getAttribute('aria-label'),
@@ -195,6 +232,11 @@ def check_session_flow(engine: str, browser, index_url: str) -> None:
            popup["durationIcon"])
     record("min" in popup["duration"] or "hr" in popup["duration"], "session popup shows duration",
            popup["duration"])
+    record(len(popup["regLabels"]) > 0, "session popup shows registration bubbles",
+           f"labels={popup['regLabels']}")
+    record(all(title for title in popup["regTitles"]), "session popup registration bubbles expose full titles",
+           f"titles={popup['regTitles']}")
+    record(popup["regAfterLocation"], "session popup registration bubbles sit after location")
     record(popup["locationIcon"] == "#i-pin", "session popup uses a pin icon for location",
            popup["locationIcon"])
     record(popup["location"] == popup["expectedRoom"], "session popup location is a quiet room action",
@@ -240,6 +282,20 @@ def check_session_flow(engine: str, browser, index_url: str) -> None:
     """)
     record(undone["pickedCount"] == 2, "Undo restores the removed session", f"picked.size={undone['pickedCount']}")
     record(undone["tileCount"] == 2, "restored session's tile reappears in the grid", f"tiles={undone['tileCount']}")
+
+    no_reg_popup = page.evaluate("""
+        () => {
+          const noReg = App.catalog.find(c => c.day && c.s0 != null && c.e0 != null && (!c.reg || !c.reg.length));
+          if (!noReg) return { available: false, noBlank: true };
+          App.togglePick(noReg);
+          document.getElementById('swDay').click();
+          const tile = [...document.querySelectorAll('.ev')].find(el => el.dataset.id === noReg.id);
+          tile.click();
+          return { available: true, noBlank: !App.pop.querySelector('.pop-reg') };
+        }
+    """)
+    record(no_reg_popup["noBlank"], "session popup omits registration row when there are no categories",
+           "no matching catalog session found" if not no_reg_popup["available"] else "")
 
     record(len(errors) == 0, "no console/page errors during the flow", "; ".join(errors))
     context.close()
