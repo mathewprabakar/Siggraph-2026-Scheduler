@@ -318,6 +318,37 @@ def check_session_flow(engine: str, browser, index_url: str) -> None:
     record(no_reg_popup["noBlank"], "session popup omits registration row when there are no categories",
            "no matching catalog session found" if not no_reg_popup["available"] else "")
 
+    offsite_location = page.evaluate("""
+        () => {
+          const offsite = App.catalog.find(c =>
+            c.day && c.s0 != null && c.e0 != null &&
+            /jw marriott|exchange la|hotel per la|prank bar/i.test(c.room || '')
+          );
+          if (!offsite) return { available: false, shown: true, link: true };
+          App.picked.clear();
+          App.togglePick(offsite);
+          document.getElementById('swDay').click();
+          const tile = [...document.querySelectorAll('.ev')].find(el => el.dataset.id === offsite.id);
+          tile.click();
+          const floorBtn = App.pop.querySelector('#popFloorBtn');
+          const floorRect = floorBtn.getBoundingClientRect();
+          floorBtn.click();
+          const mapPop = document.getElementById('mapPop');
+          const mapRect = mapPop.getBoundingClientRect();
+          return {
+            available: true,
+            shown: mapPop.classList.contains('show'),
+            link: !!mapPop.querySelector('a[href*="google.com/maps"]'),
+            positionedNearButton: Math.abs(mapRect.left - floorRect.left) < 24 &&
+              (Math.abs(mapRect.top - floorRect.bottom - 6) < 2 ||
+               Math.abs(mapRect.bottom - floorRect.top + 6) < 2),
+          };
+        }
+    """)
+    record(offsite_location["shown"] and offsite_location["link"] and offsite_location["positionedNearButton"],
+           "session popup opens external location map links from My Day",
+           "no off-site catalog session found" if not offsite_location["available"] else offsite_location)
+
     record(len(errors) == 0, "no console/page errors during the flow", "; ".join(errors))
     context.close()
 

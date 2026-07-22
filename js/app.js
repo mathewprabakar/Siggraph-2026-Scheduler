@@ -557,7 +557,7 @@ function renderPriorityPop(e,anchor){
   pop.querySelectorAll('.pri-btns button').forEach(b=>b.onclick=()=>{setPriority(e.id,parseInt(b.dataset.pr,10));pop.querySelectorAll('.pri-btns button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
   pop.querySelector('.remove').onclick=()=>removeWithUndo(e);
   const popFloorBtn=pop.querySelector('#popFloorBtn');
-  if(popFloorBtn)popFloorBtn.onclick=()=>showLocation(e.room,popFloorBtn);
+  if(popFloorBtn)popFloorBtn.onclick=(ev)=>{ev.preventDefault();ev.stopPropagation();showLocation(e.room,popFloorBtn);};
   pop.classList.add('show');
   positionPop(anchor);
 }
@@ -607,7 +607,6 @@ function findOffsiteVenue(roomStr){
 }
 const mapPop=document.getElementById('mapPop');
 function openMapPop(venue,anchor){
-  closePop();
   closeSharePop();
   const q=encodeURIComponent(venue.address);
   mapPop.innerHTML=`<div class="venue-name">${esc(venue.name)}</div>
@@ -616,6 +615,7 @@ function openMapPop(venue,anchor){
     <a class="pop-link" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener noreferrer"><svg class="ico"><use href="#i-external"></use></svg>Open in Google Maps</a>`;
   mapPop.classList.add('show');
   positionPopover(mapPop,anchor,280,280,'left');
+  closePop();
 }
 function closeMapPop(){mapPop.classList.remove('show');}
 document.addEventListener('click',e=>{if(!mapPop.contains(e.target))closeMapPop();});
