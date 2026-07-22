@@ -976,7 +976,7 @@ const TOUR_STEPS=[
   {sel:'#catalog .room-link',title:'Preview locations',body:'Room names are interactive. Convention-center rooms open the floor plan with a highlight, while off-site venues show a Google Maps preview.'},
   {sel:'#btnFloorPlan',title:'Use the floor plan',body:'Open the full LA Convention Center map whenever you need spatial context for rooms and session locations.'},
   {sel:'#btnShare',title:'Share by QR code',body:'Share the app link, or include your selected sessions when you want to move your schedule to another phone or send it to someone else.'},
-  {sel:'#themeSelect',title:'Choose a theme',body:'Switch between the SIGGRAPH palette, light mode, and dark mode. Theme changes are visual only, so your filters, scroll position, and saved sessions stay put.',align:'right'}
+  {sel:'#themeSelect',title:'Choose a theme',body:'Switch between the SIGGRAPH palette, light mode, and dark mode. Theme changes are visual only, so your filters, scroll position, and saved sessions stay put.',align:'right',mobilePlacement:'above-target'}
 ];
 let tourIndex=0,tourTarget=null,tourSeedId=null;
 function tourSetMobileView(sel){
@@ -1005,18 +1005,25 @@ function clearTourSeed(){
 }
 function positionTourCard(target,step=TOUR_STEPS[tourIndex]){
   const margin=14,cardW=330,cardH=tourCard.offsetHeight||190;
+  tourCard.style.removeProperty('--tour-mobile-top');
+  tourCard.dataset.mobilePlacement=step.mobilePlacement||'';
   if(!target){
     tourCard.style.left=margin+'px';
     tourCard.style.top=margin+'px';
     return;
   }
   const r=target.getBoundingClientRect();
+  const mobile=window.matchMedia('(max-width:920px)').matches;
   let left=step.align==='right'?r.right-cardW:r.left;
   if(left+cardW>window.innerWidth-margin)left=window.innerWidth-cardW-margin;
   left=Math.max(margin,left);
   let top=r.bottom+12;
   if(top+cardH>window.innerHeight-margin)top=r.top-cardH-12;
   if(top<margin)top=margin;
+  if(mobile&&step.mobilePlacement==='above-target'){
+    top=Math.max(margin,r.top-cardH-12);
+    tourCard.style.setProperty('--tour-mobile-top',top+'px');
+  }
   tourCard.style.left=left+'px';
   tourCard.style.top=top+'px';
 }

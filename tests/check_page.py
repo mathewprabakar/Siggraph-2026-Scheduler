@@ -1003,13 +1003,14 @@ def check_guided_tutorial(engine: str, browser, index_url: str) -> None:
               card.left >= 0 && card.right <= innerWidth &&
               card.top >= 0 && card.bottom <= innerHeight,
             rightAligned: Math.abs(card.right - Math.min(innerWidth - 14, target.right)) < 3,
+            separatedFromTheme: card.bottom <= target.top - 8 || card.top >= target.bottom + 8,
           };
         }
     """)
     record(theme["step"] == "Step 7 of 7" and theme["title"] == "Choose a theme",
            "guided tutorial reaches the theme step", theme)
     record(theme["highlightedTheme"] and not theme["highlightedFooter"] and theme["cardVisible"] and
-           theme["align"] == "right" and theme["rightAligned"],
+           theme["align"] == "right" and theme["rightAligned"] and theme["separatedFromTheme"],
            "guided tutorial highlights the theme dropdown and keeps the card right aligned", theme)
 
     closed = page.evaluate("""

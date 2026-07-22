@@ -413,4 +413,5 @@
     .theme-foot{padding:6px 14px 26px}
     .tour-card{left:14px!important;right:auto!important;top:auto!important;bottom:14px!important}
     .tour-card[data-align="right"]{left:auto!important;right:14px!important}
+    .tour-card[data-mobile-placement="above-target"]{top:var(--tour-mobile-top,14px)!important;bottom:auto!important}
   }
