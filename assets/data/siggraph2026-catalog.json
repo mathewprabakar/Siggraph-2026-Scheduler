@@ -1,4 +1,4 @@
-{"v": 2, "source": "SIGGRAPH 2026", "count": 489, "generated": "2026-07-21T12:48:30.012036+00:00", "catalog": [
+{"v": 2, "source": "SIGGRAPH 2026", "count": 489, "generated": "2026-07-23T17:27:13.712646+00:00", "catalog": [
   {
     "day": "2026-07-19",
     "e": "2:00pm",
@@ -9143,7 +9143,7 @@
       "Full Conference",
       "Experience"
     ],
-    "room": "JW Marriott - Plaza 1",
+    "room": "JW Marriott Diamond Ballroom 1-2",
     "s": "9:00am",
     "sid": "sess296",
     "t": "Building the Future of Web Graphics with WebGL and WebGPU",
@@ -10061,7 +10061,7 @@
       "Experience",
       "Discover"
     ],
-    "room": "",
+    "room": "Room 502A",
     "s": "10:00am",
     "sid": "sess535",
     "t": "NVIDIA RTX Rendering Day | From Pitch to Photorealism: Maxon’s RTX-Powered Solutions for Advertising and Archviz",
@@ -10125,7 +10125,7 @@
       "Full Conference",
       "Experience"
     ],
-    "room": "JW Marriott - Plaza 1",
+    "room": "JW Marriott Diamond Ballroom 1-2",
     "s": "10:00am",
     "sid": "sess297",
     "t": "glTF 2.1 and Beyond: Building Interactive and Spatial 3D Experiences",
@@ -10242,7 +10242,7 @@
     "room": "West Hall A",
     "s": "10:30am",
     "sid": "sess594",
-    "t": "Prana Labs | Tripo AI x Prana Labs",
+    "t": "Prana Labs | Tripo AI x Prana Labs x NUS",
     "url": "https://s2026.conference-schedule.org/?post_type=page&p=15&id=stage_106&sess=sess594"
   },
   {
@@ -10661,7 +10661,7 @@
       "Full Conference",
       "Experience"
     ],
-    "room": "JW Marriott - Plaza 1",
+    "room": "JW Marriott Diamond Ballroom 1-2",
     "s": "11:30am",
     "sid": "sess355",
     "t": "ANARI: Advancing Open Rendering Standards",
@@ -11133,7 +11133,7 @@
       "Full Conference",
       "Experience"
     ],
-    "room": "JW Marriott - Plaza 1",
+    "room": "JW Marriott Diamond Ballroom 1-2",
     "s": "1:00pm",
     "sid": "sess299",
     "t": "Machine Learning, Neural Rendering, and the Future of Open Graphics",
@@ -11308,7 +11308,7 @@
       "Full Conference",
       "Experience"
     ],
-    "room": "JW Marriott - Plaza 1",
+    "room": "JW Marriott Diamond Ballroom 1-2",
     "s": "1:30pm",
     "sid": "sess300",
     "t": "Slang in Action: Modern Shading for Graphics, Compute, and AI",
@@ -11716,7 +11716,7 @@
       "Full Conference",
       "Experience"
     ],
-    "room": "JW Marriott - Plaza 1",
+    "room": "JW Marriott Diamond Ballroom 1-2",
     "s": "2:00pm",
     "sid": "sess301",
     "t": "OpenXR: From XR Portability to Spatial Computing Platform",
@@ -12186,7 +12186,7 @@
       "Full Conference",
       "Experience"
     ],
-    "room": "JW Marriott - Plaza 1",
+    "room": "JW Marriott Diamond Ballroom 1-2",
     "s": "3:30pm",
     "sid": "sess302",
     "t": "The State of Vulkan: Updates, Tools, and Developer Resources",
@@ -12658,7 +12658,7 @@
       "Full Conference",
       "Experience"
     ],
-    "room": "JW Marriott - Plaza 1",
+    "room": "JW Marriott Diamond Ballroom 1-2",
     "s": "5:00pm",
     "sid": "sess303",
     "t": "AI-Powered Standards: How Khronos Is Building the Future of Graphics",
@@ -12827,7 +12827,7 @@
       "Full Conference",
       "Experience"
     ],
-    "room": "JW Marriott - Plaza 2-3",
+    "room": "JW Marriott Diamond Ballroom 1-2",
     "s": "6:00pm",
     "sid": "sess407",
     "t": "Khronos Group Networking Reception",
@@ -14497,7 +14497,7 @@
       "Full Conference",
       "Experience"
     ],
-    "room": "Room 513",
+    "room": "Room 518",
     "s": "1:00pm",
     "sid": "sess493",
     "t": "The Urgency of Now: Digital Art For Democracy!",
